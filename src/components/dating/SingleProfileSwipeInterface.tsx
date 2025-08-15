@@ -239,85 +239,194 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
         />
       )}
 
-      {/* Single Profile Card with Carousel */}
-      <div className="flex-1 flex items-center justify-center p-4 pb-24">
-        <Card className="w-full max-w-sm bg-card border-0 overflow-hidden shadow-xl">
-          {/* Profile Header */}
-          <div className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">
-                  {currentProfile.first_name}
-                </h2>
-                <p className="text-lg text-muted-foreground">{currentProfile.age} ans</p>
-              </div>
-              {currentProfile.profession && (
-                <Badge variant="secondary" className="text-xs">
-                  {currentProfile.profession}
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Photo Carousel */}
-          <div className="relative">
-            <Carousel className="w-full">
-              <CarouselContent>
-                {allPhotos.map((photo, index) => (
-                  <CarouselItem key={index}>
-                    <div className="aspect-[3/4] w-full">
+      {/* Single Profile Card with Vertical Scroll */}
+      <div className="flex-1 p-4 pb-24 overflow-hidden">
+        <div className="w-full max-w-sm mx-auto h-full">
+          <div className="h-full overflow-y-auto scrollbar-hide">
+            {/* Create alternating content */}
+            {(() => {
+              const content = [];
+              let photoIndex = 0;
+              
+              // First photo with basic info
+              content.push(
+                <div key="header" className="w-full mb-4">
+                  <Card className="overflow-hidden shadow-xl border-0">
+                    <div className="relative aspect-[3/4]">
                       <img
-                        src={photo}
-                        alt={`${currentProfile.first_name} - Photo ${index + 1}`}
+                        src={allPhotos[photoIndex]}
+                        alt={`${currentProfile.first_name} - Photo ${photoIndex + 1}`}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4 text-white">
+                        <h2 className="text-2xl font-bold">
+                          {currentProfile.first_name}, {currentProfile.age}
+                        </h2>
+                        {currentProfile.profession && (
+                          <p className="text-sm text-white/90 mt-1">{currentProfile.profession}</p>
+                        )}
+                      </div>
                     </div>
-                  </CarouselItem>
-                ))}
-                
-                {/* Alternate with profile info */}
-                <CarouselItem>
-                  <div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/10 to-primary/5 p-6 flex flex-col justify-center">
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-semibold text-center">À propos de {currentProfile.first_name}</h3>
-                      
-                      {currentProfile.bio && (
-                        <p className="text-sm text-foreground/80 leading-relaxed text-center">
-                          {currentProfile.bio}
-                        </p>
-                      )}
-
-                      {currentProfile.interests && currentProfile.interests.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-medium text-center">Centres d'intérêt</h4>
-                          <div className="flex flex-wrap gap-1 justify-center">
-                            {currentProfile.interests.slice(0, 8).map((interest, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {interest}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CarouselItem>
-              </CarouselContent>
+                  </Card>
+                </div>
+              );
+              photoIndex++;
               
-              {allPhotos.length > 1 && (
-                <>
-                  <CarouselPrevious className="left-2" />
-                  <CarouselNext className="right-2" />
-                </>
-              )}
-            </Carousel>
+              // Bio section
+              if (currentProfile.bio) {
+                content.push(
+                  <div key="bio" className="w-full mb-4">
+                    <Card className="p-6 border-0 bg-gradient-to-br from-primary/10 to-primary/5">
+                      <h3 className="text-lg font-semibold mb-3 text-center">À propos</h3>
+                      <p className="text-sm text-foreground/80 leading-relaxed text-center">
+                        {currentProfile.bio}
+                      </p>
+                    </Card>
+                  </div>
+                );
+                
+                // Next photo if available
+                if (photoIndex < allPhotos.length) {
+                  content.push(
+                    <div key={`photo-${photoIndex}`} className="w-full mb-4">
+                      <Card className="overflow-hidden shadow-xl border-0">
+                        <div className="aspect-[3/4]">
+                          <img
+                            src={allPhotos[photoIndex]}
+                            alt={`${currentProfile.first_name} - Photo ${photoIndex + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </Card>
+                    </div>
+                  );
+                  photoIndex++;
+                }
+              }
+              
+              // Interests section
+              if (currentProfile.interests && currentProfile.interests.length > 0) {
+                content.push(
+                  <div key="interests" className="w-full mb-4">
+                    <Card className="p-6 border-0 bg-gradient-to-br from-secondary/10 to-secondary/5">
+                      <h3 className="text-lg font-semibold mb-3 text-center">Centres d'intérêt</h3>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {currentProfile.interests.slice(0, 12).map((interest, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {interest}
+                          </Badge>
+                        ))}
+                      </div>
+                    </Card>
+                  </div>
+                );
+                
+                // Next photo if available
+                if (photoIndex < allPhotos.length) {
+                  content.push(
+                    <div key={`photo-${photoIndex}`} className="w-full mb-4">
+                      <Card className="overflow-hidden shadow-xl border-0">
+                        <div className="aspect-[3/4]">
+                          <img
+                            src={allPhotos[photoIndex]}
+                            alt={`${currentProfile.first_name} - Photo ${photoIndex + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </Card>
+                    </div>
+                  );
+                  photoIndex++;
+                }
+              }
+              
+              // Additional details section
+              const hasDetails = currentProfile.height || currentProfile.education || currentProfile.exercise_frequency || currentProfile.children || currentProfile.animals || currentProfile.smoker || currentProfile.drinks;
+              if (hasDetails) {
+                content.push(
+                  <div key="details" className="w-full mb-4">
+                    <Card className="p-6 border-0 bg-gradient-to-br from-accent/10 to-accent/5">
+                      <h3 className="text-lg font-semibold mb-3 text-center">Détails</h3>
+                      <div className="grid grid-cols-1 gap-3 text-sm">
+                        {currentProfile.height && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Taille</span>
+                            <span>{currentProfile.height} cm</span>
+                          </div>
+                        )}
+                        {currentProfile.education && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Éducation</span>
+                            <span className="text-right">{currentProfile.education}</span>
+                          </div>
+                        )}
+                        {currentProfile.exercise_frequency && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Sport</span>
+                            <span className="text-right">{currentProfile.exercise_frequency}</span>
+                          </div>
+                        )}
+                        {currentProfile.children && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Enfants</span>
+                            <span className="text-right">{currentProfile.children}</span>
+                          </div>
+                        )}
+                        {currentProfile.animals && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Animaux</span>
+                            <span className="text-right">{currentProfile.animals}</span>
+                          </div>
+                        )}
+                        {currentProfile.smoker && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Tabac</span>
+                            <span className="text-right">Fumeur</span>
+                          </div>
+                        )}
+                        {currentProfile.drinks && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Alcool</span>
+                            <span className="text-right">{currentProfile.drinks}</span>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  </div>
+                );
+                
+                // Add remaining photos
+                while (photoIndex < allPhotos.length) {
+                  content.push(
+                    <div key={`photo-${photoIndex}`} className="w-full mb-4">
+                      <Card className="overflow-hidden shadow-xl border-0">
+                        <div className="aspect-[3/4]">
+                          <img
+                            src={allPhotos[photoIndex]}
+                            alt={`${currentProfile.first_name} - Photo ${photoIndex + 1}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </Card>
+                    </div>
+                  );
+                  photoIndex++;
+                }
+              }
+              
+              return content;
+            })()}
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Fixed Action Buttons at Bottom */}
-      <div className="fixed bottom-20 left-0 right-0 z-20 bg-background/95 backdrop-blur-sm border-t border-border/10">
+      <div className="fixed bottom-20 left-0 right-0 z-20 bg-transparent">
         <div className="flex justify-center items-center gap-6 py-4">
           {/* Dislike */}
           <Button
