@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import LikesRevealDialog from './LikesRevealDialog';
+import { offlineDataManager } from '@/lib/offlineDataManager';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -136,6 +138,42 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
     if (!user) return;
 
     try {
+      // First try to get likes from offline data
+      const offlineLikes = await offlineDataManager.getUserLikes(user.id);
+      
+      if (offlineLikes.length > 0) {
+        // Get profile data for the offline likes
+        const likesWithProfiles = await Promise.all(
+          offlineLikes.map(async (like) => {
+            const profile = await offlineDataManager.getProfileByUserId(like.swiped_id);
+            if (profile) {
+              return {
+                id: like.id,
+                swiper_id: like.swiper_id,
+                swiped_id: like.swiped_id,
+                created_at: like.created_at,
+                profile: {
+                  id: profile.id,
+                  user_id: profile.user_id,
+                  first_name: profile.first_name,
+                  profile_photo_url: profile.profile_photo_url,
+                  age: profile.age,
+                  bio: profile.bio
+                }
+              };
+            }
+            return null;
+          })
+        );
+        
+        const validLikes = likesWithProfiles.filter(like => like !== null);
+        setGivenLikes(validLikes);
+        
+        // If we have offline data, return early
+        if (validLikes.length > 0) return;
+      }
+
+      // Fallback to Supabase if no offline data
       const { data, error } = await supabase
         .from('swipes')
         .select(`
