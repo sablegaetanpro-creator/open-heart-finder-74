@@ -389,27 +389,30 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="hover:bg-accent">
             <Phone className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="hover:bg-accent">
             <VideoIcon className="w-5 h-5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="hover:bg-accent">
+            <Smile className="w-5 h-5" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-accent">
                 <MoreVertical className="w-5 h-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-40">
+            <PopoverContent className="w-40 bg-background border shadow-lg">
               <div className="space-y-1">
-                <Button variant="ghost" className="w-full justify-start text-sm">
+                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent">
                   Voir le profil
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm">
+                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent">
                   Signaler
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm text-destructive">
+                <Button variant="ghost" className="w-full justify-start text-sm text-destructive hover:bg-destructive/10">
                   Bloquer
                 </Button>
               </div>
@@ -421,6 +424,17 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       {/* Messages */}
       <ScrollArea className="flex-1 px-4 py-4">
         <div className="space-y-1">
+          {/* Assistant message */}
+          <div className="flex w-full mb-4 justify-start">
+            <div className="max-w-[70%] rounded-2xl px-4 py-2 shadow-sm bg-muted text-foreground mr-12">
+              <p className="text-sm leading-relaxed">
+                👋 Salut ! Je suis l'assistant de Lovable. Contactez-moi à sable.gaetan.pro@gmail.com pour toute question.
+              </p>
+              <div className="text-xs mt-1 opacity-70 text-left">
+                Maintenant
+              </div>
+            </div>
+          </div>
           {messages.map(renderMessage)}
           <div ref={messagesEndRef} />
         </div>
@@ -469,15 +483,23 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
           </div>
 
           {/* Message input */}
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Tapez votre message..."
               disabled={isSending}
-              className="border-0 bg-muted focus-visible:ring-1 focus-visible:ring-primary"
+              className="border-0 bg-muted focus-visible:ring-1 focus-visible:ring-primary pr-12"
             />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              disabled={isSending}
+            >
+              <Smile className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Send button */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, X, Filter, Zap, Wifi, WifiOff, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, X, Filter, Zap, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,9 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
   const [swipeCount, setSwipeCount] = useState(0);
   const [showFilterDialog, setShowFilterDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [touchStart, setTouchStart] = useState<{x: number, y: number} | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const [swipeDistance, setSwipeDistance] = useState(0);
 
   const currentProfile = profiles[currentProfileIndex];
 
@@ -204,11 +207,6 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
           {swipeCount > 0 && (
             <Badge variant="secondary">{swipeCount} swipes</Badge>
           )}
-          {!isOnline ? (
-            <WifiOff className="w-4 h-4 text-red-500" />
-          ) : (
-            <Wifi className="w-4 h-4 text-green-500" />
-          )}
         </div>
         
         <div className="flex items-center space-x-2">
@@ -239,10 +237,52 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
         />
       )}
 
-      {/* Single Profile Card with Vertical Scroll */}
-      <div className="flex-1 p-4 pb-24 overflow-hidden">
+      {/* Single Profile Card with Vertical Scroll - Swipeable */}
+      <div 
+        className="flex-1 p-4 pb-24 overflow-hidden touch-pan-y"
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          setTouchStart({ x: touch.clientX, y: touch.clientY });
+        }}
+        onTouchMove={(e) => {
+          if (!touchStart) return;
+          const touch = e.touches[0];
+          const deltaX = touch.clientX - touchStart.x;
+          const deltaY = touch.clientY - touchStart.y;
+          
+          // Only handle horizontal swipes (more horizontal than vertical)
+          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+            e.preventDefault();
+            setSwipeDirection(deltaX > 0 ? 'right' : 'left');
+            setSwipeDistance(Math.abs(deltaX));
+          }
+        }}
+        onTouchEnd={() => {
+          if (swipeDirection && swipeDistance > 100) {
+            handleSwipe(swipeDirection);
+          }
+          setTouchStart(null);
+          setSwipeDirection(null);
+          setSwipeDistance(0);
+        }}
+      >
         <div className="w-full max-w-sm mx-auto h-full">
-          <div className="h-full overflow-y-auto scrollbar-hide">
+          <div 
+            className="h-full overflow-y-auto scrollbar-hide transition-transform duration-200"
+            style={{
+              transform: swipeDirection ? `translateX(${swipeDirection === 'right' ? swipeDistance : -swipeDistance}px) rotate(${(swipeDirection === 'right' ? swipeDistance : -swipeDistance) * 0.1}deg)` : 'none',
+              opacity: swipeDistance > 50 ? Math.max(0.3, 1 - swipeDistance / 300) : 1
+            }}
+          >
+            {/* Swipe Indicators */}
+            {swipeDirection && swipeDistance > 50 && (
+              <div className="fixed inset-0 pointer-events-none z-30 flex items-center justify-center">
+                <div className={`text-6xl font-bold ${swipeDirection === 'right' ? 'text-green-500' : 'text-red-500'}`}>
+                  {swipeDirection === 'right' ? '❤️' : '✖️'}
+                </div>
+              </div>
+            )}
+            
             {/* Create alternating content */}
             {(() => {
               const content = [];
