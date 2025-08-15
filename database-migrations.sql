@@ -337,6 +337,32 @@ FOR SELECT USING (
 );
 
 CREATE POLICY "Users can delete their own chat media" ON storage.objects
+
+-- Tables pour signalements et blocages
+CREATE TABLE IF NOT EXISTS reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  reported_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  blocked_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(blocker_id, blocked_user_id)
+);
+
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own reports" ON reports
+  FOR ALL USING (auth.uid() = reporter_id) WITH CHECK (auth.uid() = reporter_id);
+
+CREATE POLICY "Users can manage own blocks" ON blocks
+  FOR ALL USING (auth.uid() = blocker_id) WITH CHECK (auth.uid() = blocker_id);
 FOR DELETE USING (
   bucket_id = 'chat-media' 
   AND auth.uid()::text = (storage.foldername(name))[2]

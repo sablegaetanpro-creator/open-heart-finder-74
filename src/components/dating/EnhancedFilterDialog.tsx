@@ -218,10 +218,9 @@ const EnhancedFilterDialog: React.FC<EnhancedFilterDialogProps> = ({
                 <SelectContent>
                   <SelectItem value="tous">Tous</SelectItem>
                   <SelectItem value="amitie">Amitié</SelectItem>
-                  <SelectItem value="relation_courte">Relation courte</SelectItem>
-                  <SelectItem value="couple_long_terme">Couple long terme</SelectItem>
+                  <SelectItem value="relation_casuelle">Relation casuelle</SelectItem>
+                  <SelectItem value="relation_serieuse">Relation sérieuse</SelectItem>
                   <SelectItem value="mariage">Mariage</SelectItem>
-                  <SelectItem value="je_sais_pas">Je ne sais pas</SelectItem>
                 </SelectContent>
               </Select>
             </div>

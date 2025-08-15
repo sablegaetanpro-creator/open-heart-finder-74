@@ -35,7 +35,7 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
       const { data: swipedIds } = await supabase
         .from('swipes')
         .select('swiped_id')
-        .eq('swiper_id', user.id);
+        .eq('user_id', user.id);
 
       const excludeIds = [user.id, ...(swipedIds?.map(s => s.swiped_id) || [])];
 
@@ -66,10 +66,19 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
         throw error;
       }
 
-      // Filter by mutual compatibility
+      // Read saved filters
+      const savedFiltersRaw = localStorage.getItem('dating_filters');
+      const savedFilters = savedFiltersRaw ? JSON.parse(savedFiltersRaw) : null;
+
+      // Filter by mutual compatibility + saved filters
       const compatibleProfiles = data?.filter(p => {
         if (p.looking_for === 'les_deux') return true;
         return p.looking_for === profile.gender;
+      }).filter(p => {
+        if (!savedFilters) return true;
+        const withinAge = !savedFilters.ageRange || (p.age >= savedFilters.ageRange[0] && p.age <= savedFilters.ageRange[1]);
+        const relOk = !savedFilters.relationshipType || savedFilters.relationshipType === 'tous' || p.relationship_type === savedFilters.relationshipType;
+        return withinAge && relOk;
       }) || [];
 
       console.log(`Profils trouvés: ${data?.length || 0}, Compatibles: ${compatibleProfiles.length}`);
@@ -105,7 +114,7 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
       const { error: swipeError } = await supabase
         .from('swipes')
         .insert({
-          swiper_id: user.id,
+          user_id: user.id,
           swiped_id: profileId,
           is_like: isLike
         });
@@ -114,19 +123,31 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
 
       if (isLike) {
         // Check if it's a match
+        const swipedProfile = profiles.find(p => p.id === profileId);
         const { data: existingSwipe } = await supabase
           .from('swipes')
           .select('*')
-          .eq('swiper_id', profileId)
-          .eq('swiped_id', user.id)
+          .eq('user_id', swipedProfile?.user_id || '')
+          .eq('swiped_id', profile.id)
           .eq('is_like', true)
-          .single();
+          .maybeSingle();
 
         if (existingSwipe) {
-          toast({
-            title: "🎉 C'est un match !",
-            description: "Vous pouvez maintenant vous envoyer des messages"
-          });
+          // Create match if not exists
+          const { data: existingMatch } = await supabase
+            .from('matches')
+            .select('*')
+            .or(`and(user1_id.eq.${user.id},user2_id.eq.${swipedProfile?.user_id}),and(user1_id.eq.${swipedProfile?.user_id},user2_id.eq.${user.id})`)
+            .maybeSingle();
+          if (!existingMatch) {
+            await supabase
+              .from('matches')
+              .insert({
+                user1_id: user.id < (swipedProfile?.user_id || '') ? user.id : (swipedProfile?.user_id || ''),
+                user2_id: user.id < (swipedProfile?.user_id || '') ? (swipedProfile?.user_id || '') : user.id
+              });
+          }
+          toast({ title: "🎉 C'est un match !", description: "Vous pouvez maintenant vous envoyer des messages" });
         } else {
           toast({
             title: "❤️ Like envoyé !",

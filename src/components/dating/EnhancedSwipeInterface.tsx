@@ -53,7 +53,7 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         const { data: recentSwipes } = await supabase
           .from('swipes')
           .select('swiped_id')
-          .eq('swiper_id', user.id)
+          .eq('user_id', user.id)
           .or('is_like.eq.true,created_at.gte.' + new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString());
         
         swipedIds = recentSwipes || [];
@@ -88,10 +88,19 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         throw error;
       }
 
-      // Filter by mutual compatibility
+      // Read saved filters
+      const savedFiltersRaw = localStorage.getItem('dating_filters');
+      const savedFilters = savedFiltersRaw ? JSON.parse(savedFiltersRaw) : null;
+
+      // Filter by mutual compatibility + saved filters
       const compatibleProfiles = data?.filter(p => {
         if (p.looking_for === 'les_deux') return true;
         return p.looking_for === profile.gender;
+      }).filter(p => {
+        if (!savedFilters) return true;
+        const withinAge = !savedFilters.ageRange || (p.age >= savedFilters.ageRange[0] && p.age <= savedFilters.ageRange[1]);
+        const relOk = !savedFilters.relationshipType || savedFilters.relationshipType === 'tous' || p.relationship_type === savedFilters.relationshipType;
+        return withinAge && relOk;
       }) || [];
 
       console.log(`Profils trouvés: ${data?.length || 0}, Compatibles: ${compatibleProfiles.length}`);
@@ -128,7 +137,7 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
       const { error: swipeError } = await supabase
         .from('swipes')
         .insert({
-          swiper_id: user.id,
+          user_id: user.id,
           swiped_id: profileId,
           is_like: isLike
         });
@@ -137,11 +146,12 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
 
       if (isLike) {
         // Check if it's a match - use maybeSingle() to avoid errors
+        const swipedProfile = profiles.find(p => p.id === profileId);
         const { data: existingSwipe } = await supabase
           .from('swipes')
           .select('*')
-          .eq('swiper_id', profileId)
-          .eq('swiped_id', user.id)
+          .eq('user_id', swipedProfile?.user_id || '')
+          .eq('swiped_id', profile.id)
           .eq('is_like', true)
           .maybeSingle();
 
@@ -150,15 +160,15 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
           const { data: existingMatch } = await supabase
             .from('matches')
             .select('*')
-            .or(`and(user1_id.eq.${user.id},user2_id.eq.${profileId}),and(user1_id.eq.${profileId},user2_id.eq.${user.id})`)
+            .or(`and(user1_id.eq.${user.id},user2_id.eq.${swipedProfile?.user_id}),and(user1_id.eq.${swipedProfile?.user_id},user2_id.eq.${user.id})`)
             .maybeSingle();
 
           if (!existingMatch) {
             await supabase
               .from('matches')
               .insert({
-                user1_id: user.id < profileId ? user.id : profileId,
-                user2_id: user.id < profileId ? profileId : user.id
+                user1_id: user.id < (swipedProfile?.user_id || '') ? user.id : (swipedProfile?.user_id || ''),
+                user2_id: user.id < (swipedProfile?.user_id || '') ? (swipedProfile?.user_id || '') : user.id
               });
           }
 

@@ -16,7 +16,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
-  message_type?: 'text' | 'image' | 'video' | 'audio';
+  media_type?: 'image' | 'video' | 'audio';
   media_url?: string;
   is_read: boolean;
 }
@@ -94,7 +94,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
           match_id: matchId,
           sender_id: user.id,
           content: content.trim() || (type === 'image' ? '📷 Photo' : type === 'video' ? '🎥 Vidéo' : type === 'audio' ? '🎵 Audio' : ''),
-          message_type: type,
+          media_type: type === 'text' ? null : (type as 'image' | 'video' | 'audio'),
           media_url: mediaUrl
         })
         .select()
@@ -296,6 +296,37 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
     });
   };
 
+  const handleReport = async () => {
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .insert({
+          reporter_id: user?.id,
+          reported_user_id: otherUser.id,
+          reason: 'inappropriate_content'
+        });
+      if (error) throw error;
+      toast({ title: 'Signalement envoyé', description: "Merci, notre équipe va examiner." });
+    } catch (err: any) {
+      toast({ title: 'Erreur', description: "Fonctionnalité indisponible pour le moment", variant: 'destructive' });
+    }
+  };
+
+  const handleBlock = async () => {
+    try {
+      const { error } = await supabase
+        .from('blocks')
+        .insert({
+          blocker_id: user?.id,
+          blocked_user_id: otherUser.id
+        });
+      if (error) throw error;
+      toast({ title: 'Utilisateur bloqué', description: "Vous ne verrez plus cette personne." });
+    } catch (err: any) {
+      toast({ title: 'Erreur', description: "Fonctionnalité indisponible pour le moment", variant: 'destructive' });
+    }
+  };
+
   const renderMessage = (message: Message) => {
     const isOwn = message.sender_id === user?.id;
     
@@ -313,7 +344,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             ? "bg-gradient-love text-white ml-12" 
             : "bg-muted text-foreground mr-12"
         )}>
-          {message.message_type === 'image' && message.media_url && (
+          {message.media_type === 'image' && message.media_url && (
             <div className="mb-2">
               <img 
                 src={message.media_url} 
@@ -326,7 +357,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             </div>
           )}
           
-          {message.message_type === 'video' && message.media_url && (
+          {message.media_type === 'video' && message.media_url && (
             <div className="mb-2">
               <video 
                 src={message.media_url} 
@@ -337,7 +368,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             </div>
           )}
           
-          {message.message_type === 'audio' && message.media_url && (
+          {message.media_type === 'audio' && message.media_url && (
             <div className="mb-2">
               <audio 
                 src={message.media_url} 
@@ -406,13 +437,13 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             </PopoverTrigger>
             <PopoverContent className="w-40 bg-background border shadow-lg">
               <div className="space-y-1">
-                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent">
+                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent" onClick={onBack}>
                   Voir le profil
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent">
+                <Button variant="ghost" className="w-full justify-start text-sm hover:bg-accent" onClick={handleReport}>
                   Signaler
                 </Button>
-                <Button variant="ghost" className="w-full justify-start text-sm text-destructive hover:bg-destructive/10">
+                <Button variant="ghost" className="w-full justify-start text-sm text-destructive hover:bg-destructive/10" onClick={handleBlock}>
                   Bloquer
                 </Button>
               </div>
@@ -441,7 +472,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="bg-card border-t border-border p-3">
+      <div className="bg-card border-t border-border p-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="flex items-end space-x-2">
           {/* Media buttons */}
           <div className="flex space-x-1">
