@@ -77,11 +77,12 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
       if (error) throw error;
 
       toast({
-        title: "Like retiré",
-        description: `${profile.first_name} peut maintenant réapparaître dans Découvrir`,
-        duration: 3000
+        title: "✅ Like retiré avec succès",
+        description: `${profile.first_name} retournera dans Découvrir`,
+        duration: 4000
       });
 
+      // Call the callback to handle navigation and refresh
       onRemoveLike(profile.user_id);
       onBack();
     } catch (error: any) {

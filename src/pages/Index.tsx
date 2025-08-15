@@ -88,9 +88,16 @@ const Index = () => {
         <HappnLikesProfileView
           profile={selectedProfile}
           onBack={() => setCurrentView('profile')}
-          onRemoveLike={(profileId) => {
+          onRemoveLike={async (profileId) => {
             console.log('Removing like for profile:', profileId);
+            // Switch back to profile view and force refresh
             setCurrentView('profile');
+            setActiveTab('profile');
+            // Force complete page reload to refresh all data
+            setTimeout(() => {
+              window.location.hash = '#profile';
+              window.location.reload();
+            }, 100);
           }}
         />
       ) : null;
