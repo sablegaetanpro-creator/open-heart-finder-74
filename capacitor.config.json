@@ -1,0 +1,44 @@
+{
+  "appId": "app.lovable.cd8e53c81cd04f3b8506a6e8262920e5",
+  "appName": "open-heart-finder",
+  "webDir": "dist",
+  "server": {
+    "url": "http://localhost:3000",
+    "cleartext": true
+  },
+  "plugins": {
+    "CapacitorSQLite": {
+      "iosDatabaseLocation": "Library/CapacitorDatabase",
+      "iosIsEncryption": false,
+      "iosKeychainPrefix": "openheartfinder",
+      "iosBiometric": {
+        "biometricAuth": false,
+        "biometricTitle": "Biometric login for capacitor sqlite"
+      },
+      "androidIsEncryption": false,
+      "androidBiometric": {
+        "biometricAuth": false,
+        "biometricTitle": "Biometric login for capacitor sqlite",
+        "biometricSubTitle": "Log in using your biometric"
+      }
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#348575",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "androidSpinnerStyle": "large",
+      "iosSpinnerStyle": "small",
+      "spinnerColor": "#999999",
+      "splashFullScreen": true,
+      "splashImmersive": true,
+      "layoutName": "launch_screen",
+      "useDialog": true
+    },
+    "StatusBar": {
+      "style": "DARK"
+    }
+  }
+}

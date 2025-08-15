@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Modern Dating App Design System - Premium gradients, love-inspired colors */
+
+@layer base {
+  :root {
+    /* Base colors - Clean and modern */
+    --background: 0 0% 99%;
+    --foreground: 224 71.4% 4.1%;
+
+    /* Card system - Soft and inviting */
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+
+    /* Love & Romance palette */
+    --primary: 348 85% 58%;  /* Vibrant coral-pink for love */
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 348 100% 68%;
+
+    /* Messages & Communication */
+    --message: 217 91% 60%;  /* Trust blue for messages */
+    --message-foreground: 0 0% 98%;
+    --message-glow: 217 100% 70%;
+
+    /* Like & Heart actions */
+    --like: 348 85% 58%;
+    --like-foreground: 0 0% 98%;
+    
+    /* Dislike & Pass actions */
+    --dislike: 0 84% 60%;
+    --dislike-foreground: 0 0% 98%;
+
+    /* Secondary & accents */
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 348 85% 58%;
+
+    /* Beautiful gradients */
+    --gradient-love: linear-gradient(135deg, hsl(348 85% 58%) 0%, hsl(348 100% 68%) 100%);
+    --gradient-message: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 100% 70%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(348 85% 58%) 0%, hsl(217 91% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 14.3% 98%) 100%);
+    
+    /* Shadows for depth */
+    --shadow-card: 0 4px 24px -4px hsl(348 85% 58% / 0.1);
+    --shadow-love: 0 8px 32px -8px hsl(348 85% 58% / 0.3);
+    --shadow-message: 0 8px 32px -8px hsl(217 91% 60% / 0.3);
+
+    /* Smooth animations */
+    --transition-all: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --radius: 1rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark mode - Sophisticated and romantic */
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+
+    /* Keep love colors vibrant in dark mode */
+    --primary: 348 85% 58%;
+    --primary-foreground: 0 0% 98%;
+    --primary-glow: 348 100% 68%;
+
+    --message: 217 91% 60%;
+    --message-foreground: 0 0% 98%;
+    --message-glow: 217 100% 70%;
+
+    --like: 348 85% 58%;
+    --like-foreground: 0 0% 98%;
+    
+    --dislike: 0 84% 60%;
+    --dislike-foreground: 0 0% 98%;
+
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 348 85% 58%;
+
+    /* Dark mode gradients */
+    --gradient-love: linear-gradient(135deg, hsl(348 85% 58%) 0%, hsl(348 100% 68%) 100%);
+    --gradient-message: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 100% 70%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(348 85% 58%) 0%, hsl(217 91% 60%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(224 71.4% 4.1%) 0%, hsl(215 27.9% 16.9%) 100%);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

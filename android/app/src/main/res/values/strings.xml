@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LoveConnect - App de Rencontres</string>
+    <string name="title_activity_main">LoveConnect - App de Rencontres</string>
+    <string name="package_name">app.lovable.cd8e53c81cd04f3b8506a6e8262920e5</string>
+    <string name="custom_url_scheme">app.lovable.cd8e53c81cd04f3b8506a6e8262920e5</string>
+</resources>
