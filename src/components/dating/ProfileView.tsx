@@ -101,6 +101,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
     if (!user) return;
 
     try {
+      // First try to get received likes from Supabase
       const { data, error } = await supabase
         .from('swipes')
         .select(`
@@ -111,7 +112,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error for received likes:', error);
+        return;
+      }
 
       const processedLikes = (data || []).map(like => ({
         id: like.id,
@@ -119,16 +123,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         swiped_id: like.swiped_id,
         created_at: like.created_at,
         profile: {
-          id: like.swiper_profile.id,
-          user_id: like.swiper_profile.user_id,
-          first_name: like.swiper_profile.first_name,
-          profile_photo_url: like.swiper_profile.profile_photo_url,
-          age: like.swiper_profile.age,
-          bio: like.swiper_profile.bio
+          id: like.swiper_profile?.id || '',
+          user_id: like.swiper_profile?.user_id || '',
+          first_name: like.swiper_profile?.first_name || 'Utilisateur',
+          profile_photo_url: like.swiper_profile?.profile_photo_url || '',
+          age: like.swiper_profile?.age || 25,
+          bio: like.swiper_profile?.bio || ''
         }
       }));
 
       setReceivedLikes(processedLikes);
+      
+      // Pour débogage: afficher le nombre de likes reçus
+      console.log(`Likes reçus chargés: ${processedLikes.length}`);
+      
     } catch (error) {
       console.error('Error loading received likes:', error);
     }
