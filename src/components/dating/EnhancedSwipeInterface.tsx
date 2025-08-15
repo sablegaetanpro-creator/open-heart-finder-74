@@ -198,10 +198,7 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
           </p>
           <div className="space-y-3">
             <Button 
-              onClick={() => {
-                window.location.hash = '#settings';
-                window.location.reload();
-              }} 
+              onClick={() => setShowFilterDialog(true)} 
               variant="outline" 
               className="w-full"
             >
@@ -240,10 +237,7 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => {
-            window.location.hash = '#settings';
-            window.location.reload();
-          }}
+          onClick={() => setShowFilterDialog(true)}
         >
           <Filter className="w-5 h-5" />
         </Button>

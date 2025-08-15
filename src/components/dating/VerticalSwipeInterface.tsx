@@ -164,10 +164,7 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
           </p>
           <div className="space-y-3">
             <Button 
-              onClick={() => {
-                window.location.hash = '#settings';
-                window.location.reload();
-              }} 
+              onClick={() => setShowFilterDialog(true)} 
               variant="outline" 
               className="w-full"
             >
@@ -204,10 +201,7 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => {
-            window.location.hash = '#settings';
-            window.location.reload();
-          }}
+          onClick={() => setShowFilterDialog(true)}
         >
           <Filter className="w-5 h-5" />
         </Button>
