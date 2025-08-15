@@ -62,35 +62,54 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
   const handleRemoveLike = useCallback(async () => {
     if (isProcessing || !user) return;
     
+    console.log('🔄 Démarrage de la suppression du like pour:', profile.first_name, profile.user_id);
     setIsProcessing(true);
     try {
-      // Remove the like from the database
-      const { error } = await supabase
-        .from('swipes')
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', profile.user_id)
-        .eq('is_like', true);
+      // Use the new function to properly remove like and associated match
+      const { data, error } = await supabase
+        .rpc('remove_user_like', {
+          p_swiper_id: user.id,
+          p_swiped_id: profile.user_id
+        });
 
-      if (error) throw error;
+      console.log('📊 Résultat de remove_user_like:', { data, error });
 
-      toast({
-        title: "Like retiré",
-        description: `Vous avez retiré votre like pour ${profile.first_name}`
-      });
+      if (error) {
+        console.error('❌ Erreur SQL:', error);
+        throw error;
+      }
 
-      onRemoveLike(profile.user_id);
-      onBack();
+      if ((data as any)?.success) {
+        console.log('✅ Like supprimé avec succès:', data);
+        toast({
+          title: "✅ Like retiré avec succès",
+          description: `${profile.first_name} retournera dans Découvrir`,
+          duration: 4000
+        });
+
+        // Call the callback to handle navigation and refresh
+        onRemoveLike(profile.user_id);
+        onBack();
+      } else {
+        console.log('⚠️ Pas de like trouvé à supprimer:', data);
+        toast({
+          title: "Information",
+          description: (data as any)?.message || "Aucun like trouvé à retirer",
+          duration: 3000
+        });
+      }
     } catch (error: any) {
+      console.error('❌ Erreur lors de la suppression du like:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de retirer le like",
-        variant: "destructive"
+        description: "Impossible de retirer le like. Veuillez réessayer.",
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, user, profile, onRemoveLike, onBack]);
+  }, [isProcessing, user, profile.user_id, onRemoveLike, onBack]);
 
   const getChildrenIcon = (children: string) => {
     switch (children) {
