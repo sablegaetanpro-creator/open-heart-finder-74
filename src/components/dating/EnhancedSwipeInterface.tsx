@@ -102,16 +102,32 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
       if (swipeError) throw swipeError;
 
       if (isLike) {
-        // Check if it's a match
+        // Check if it's a match - use maybeSingle() to avoid errors
         const { data: existingSwipe } = await supabase
           .from('swipes')
           .select('*')
           .eq('swiper_id', profileId)
           .eq('swiped_id', user.id)
           .eq('is_like', true)
-          .single();
+          .maybeSingle();
 
         if (existingSwipe) {
+          // Create the match if it doesn't exist
+          const { data: existingMatch } = await supabase
+            .from('matches')
+            .select('*')
+            .or(`and(user1_id.eq.${user.id},user2_id.eq.${profileId}),and(user1_id.eq.${profileId},user2_id.eq.${user.id})`)
+            .maybeSingle();
+
+          if (!existingMatch) {
+            await supabase
+              .from('matches')
+              .insert({
+                user1_id: user.id < profileId ? user.id : profileId,
+                user2_id: user.id < profileId ? profileId : user.id
+              });
+          }
+
           toast({
             title: "🎉 C'est un match !",
             description: "Vous pouvez maintenant vous envoyer des messages"
