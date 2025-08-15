@@ -974,6 +974,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      cleanup_old_swipes: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       create_user_profile: {
         Args: {
           age: number
@@ -1016,6 +1020,10 @@ export type Database = {
       }
       perform_maintenance: {
         Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      remove_user_like: {
+        Args: { p_swiped_id: string; p_swiper_id: string }
         Returns: Json
       }
       validate_email: {

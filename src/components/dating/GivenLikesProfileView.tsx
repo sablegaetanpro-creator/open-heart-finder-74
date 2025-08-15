@@ -67,19 +67,19 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
     
     setIsProcessing(true);
     try {
-      // Remove the like from the database
-      const { error } = await supabase
-        .from('swipes')
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', profile.user_id)
-        .eq('is_like', true);
+      // Use the new function to properly remove like and associated match
+      const { data, error } = await supabase
+        .rpc('remove_user_like', {
+          p_swiper_id: user.id,
+          p_swiped_id: profile.user_id
+        });
 
       if (error) throw error;
 
       toast({
         title: "Like retiré",
-        description: `Vous avez retiré votre like pour ${profile.first_name}`
+        description: `${profile.first_name} peut maintenant réapparaître dans Découvrir`,
+        duration: 3000
       });
 
       onRemoveLike(profile.user_id);

@@ -33,11 +33,12 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
     if (!user || !profile) return;
 
     try {
-      // Get profiles that haven't been swiped yet
+      // Get recent swipes (dislikes older than 15 days are ignored)
       const { data: swipedIds } = await supabase
         .from('swipes')
         .select('swiped_id')
-        .eq('swiper_id', user.id);
+        .eq('swiper_id', user.id)
+        .or('is_like.eq.true,created_at.gte.' + new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString());
 
       const excludeIds = [user.id, ...(swipedIds?.map(s => s.swiped_id) || [])];
 
