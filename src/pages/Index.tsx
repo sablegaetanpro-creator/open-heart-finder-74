@@ -73,8 +73,10 @@ const Index = () => {
     setIsOnboarding(false);
   };
 
-  const handleStartChat = (matchId: string) => {
+  const handleStartChat = (matchId: string, otherUser?: any) => {
     console.log('Starting chat with:', matchId);
+    // Pour l'instant, on peut juste naviguer vers les messages
+    setActiveTab('messages');
   };
 
   if (isOnboarding) {
@@ -127,7 +129,7 @@ const Index = () => {
         );
       case 'settings':
         return <SettingsPage onNavigateBack={() => setActiveTab('profile')} />;
-        default:
+      default:
         return (
           <div className="flex-1">
             <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />

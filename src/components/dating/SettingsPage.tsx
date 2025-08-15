@@ -51,8 +51,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
     },
     discovery: {
       showMe: true,
-      maxDistance: 50,
-      ageRange: [22, 35] as [number, number]
+      maxDistance: 25,
+      ageRange: [18, 50] as [number, number]
     },
     appearance: {
       darkMode: theme === 'dark',
@@ -130,13 +130,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
             ←
           </Button>
         )}
-        <div>
-          <h1 className="text-2xl font-bold">Réglages</h1>
-          <p className="text-white/80">Personnalisez votre expérience</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-bold truncate">Réglages</h1>
+          <p className="text-white/80 truncate">Personnalisez votre expérience</p>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="px-4 py-6 space-y-6">
         {/* Filtres de découverte */}
         <Card>
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">

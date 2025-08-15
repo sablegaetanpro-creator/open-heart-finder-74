@@ -441,7 +441,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="bg-card border-t border-border p-4">
+      <div className="bg-card border-t border-border p-3">
         <div className="flex items-end space-x-2">
           {/* Media buttons */}
           <div className="flex space-x-1">

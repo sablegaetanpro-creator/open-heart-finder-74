@@ -39,11 +39,20 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
 
       const excludeIds = [user.id, ...(swipedIds?.map(s => s.swiped_id) || [])];
 
+      // Construire la requête de base
       let query = supabase
         .from('profiles')
         .select('*')
-        .not('user_id', 'in', `(${excludeIds.join(',')})`)
-        .eq('is_profile_complete', true);
+        .eq('is_profile_complete', true)
+        .neq('user_id', user.id); // Exclure l'utilisateur actuel
+
+      // Exclure les profils déjà swipés
+      if (excludeIds.length > 1) {
+        const swipedUserIds = excludeIds.filter(id => id !== user.id);
+        if (swipedUserIds.length > 0) {
+          query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+        }
+      }
 
       // Apply basic compatibility filters
       if (profile.looking_for !== 'les_deux') {
@@ -52,7 +61,10 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
 
       const { data, error } = await query.limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur requête profils:', error);
+        throw error;
+      }
 
       // Filter by mutual compatibility
       const compatibleProfiles = data?.filter(p => {
@@ -60,6 +72,8 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
         return p.looking_for === profile.gender;
       }) || [];
 
+      console.log(`Profils trouvés: ${data?.length || 0}, Compatibles: ${compatibleProfiles.length}`);
+      
       setProfiles(compatibleProfiles as Profile[]);
       
       // Show toast only for manual reloads (not initial load)
@@ -70,6 +84,7 @@ const VerticalSwipeInterface: React.FC<VerticalSwipeInterfaceProps> = ({ onAdVie
         });
       }
     } catch (error: any) {
+      console.error('Erreur loadProfiles:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les profils",

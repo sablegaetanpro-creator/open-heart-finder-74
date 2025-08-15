@@ -485,7 +485,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
       </div>
 
       {/* Profile Info */}
-      <div className="pt-20 px-6">
+      <div className="pt-20 px-4">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground">
             {profile.first_name}, {profile.age}

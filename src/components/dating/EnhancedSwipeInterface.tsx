@@ -42,25 +42,39 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
     return () => window.removeEventListener('refresh-data', handleDataRefresh);
   }, [user, profile]);
 
-  const loadProfiles = async () => {
+  const loadProfiles = async (forceRefresh = false) => {
     if (!user || !profile) return;
 
     try {
-      // Get recent swipes (dislikes older than 15 days are ignored)
-      const { data: swipedIds } = await supabase
-        .from('swipes')
-        .select('swiped_id')
-        .eq('swiper_id', user.id)
-        .or('is_like.eq.true,created_at.gte.' + new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString());
+      // Si forceRefresh, on ignore les swipes récents pour voir plus de profils
+      let swipedIds: any[] = [];
+      
+      if (!forceRefresh) {
+        const { data: recentSwipes } = await supabase
+          .from('swipes')
+          .select('swiped_id')
+          .eq('swiper_id', user.id)
+          .or('is_like.eq.true,created_at.gte.' + new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString());
+        
+        swipedIds = recentSwipes || [];
+      }
 
       const excludeIds = [user.id, ...(swipedIds?.map(s => s.swiped_id) || [])];
 
+      // Construire la requête de base
       let query = supabase
         .from('profiles')
         .select('*')
-        .not('user_id', 'in', `(${excludeIds.join(',')})`)
-        .eq('is_profile_complete', true);
-        // Retirer temporairement le filtre is_verified pour voir les profils
+        .eq('is_profile_complete', true)
+        .neq('user_id', user.id); // Exclure l'utilisateur actuel
+
+      // Exclure les profils déjà swipés (sauf si forceRefresh)
+      if (!forceRefresh && excludeIds.length > 1) {
+        const swipedUserIds = excludeIds.filter(id => id !== user.id);
+        if (swipedUserIds.length > 0) {
+          query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+        }
+      }
 
       // Apply basic compatibility filters
       if (profile.looking_for !== 'les_deux') {
@@ -69,7 +83,10 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
 
       const { data, error } = await query.limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erreur requête profils:', error);
+        throw error;
+      }
 
       // Filter by mutual compatibility
       const compatibleProfiles = data?.filter(p => {
@@ -77,17 +94,20 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         return p.looking_for === profile.gender;
       }) || [];
 
+      console.log(`Profils trouvés: ${data?.length || 0}, Compatibles: ${compatibleProfiles.length}`);
+      
       setProfiles(compatibleProfiles as Profile[]);
       setCurrentIndex(0);
       
       // Afficher le toast seulement pour les rechargements manuels (pas le chargement initial)
-      if (profiles.length > 0) {
+      if (profiles.length > 0 || forceRefresh) {
         toast({
-          title: "Profils rechargés !",
-          description: `${compatibleProfiles.length} nouveaux profils disponibles`
+          title: forceRefresh ? "Filtres appliqués !" : "Profils rechargés !",
+          description: `${compatibleProfiles.length} profils disponibles`
         });
       }
     } catch (error: any) {
+      console.error('Erreur loadProfiles:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les profils",
@@ -205,17 +225,17 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
               <Filter className="w-4 h-4 mr-2" />
               Modifier les filtres
             </Button>
-            <Button 
-              onClick={() => {
-                setIsLoading(true);
-                loadProfiles();
-              }} 
-              variant="outline" 
-              className="mt-4"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Chargement...' : '🔄 Recharger les profils'}
-            </Button>
+                         <Button 
+               onClick={() => {
+                 setIsLoading(true);
+                 loadProfiles(true); // Force refresh avec filtres
+               }} 
+               variant="outline" 
+               className="mt-4"
+               disabled={isLoading}
+             >
+               {isLoading ? 'Chargement...' : '🔄 Appliquer les filtres'}
+             </Button>
           </div>
         </Card>
       </div>
