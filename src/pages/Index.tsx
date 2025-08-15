@@ -94,12 +94,12 @@ const Index = () => {
             console.log('🔄 Suppression du like terminée pour:', profileId);
             
             // Retour à l'onglet découvrir directement
-            setActiveTab('decouvrir');
+            setActiveTab('discover');
             setCurrentView('discover');
             
             // Forcer le rechargement des composants sans reload de page
             setTimeout(() => {
-              window.location.hash = '#decouvrir';
+              window.location.hash = '#discover';
               // Trigger a custom event to refresh data
               window.dispatchEvent(new CustomEvent('refresh-data'));
             }, 500);
