@@ -200,7 +200,7 @@ const EnhancedAuthPage = () => {
       age: parseInt(requiredData.age),
       gender: requiredData.gender as 'homme' | 'femme',
       looking_for: requiredData.looking_for as 'homme' | 'femme' | 'les_deux',
-      relationship_type: requiredData.relationship_type,
+      relationship_type: requiredData.relationship_type as 'amitie' | 'relation_serieuse' | 'relation_casuelle' | 'mariage',
       height: parseInt(requiredData.height),
       profile_photo_url: requiredData.profile_photo_url,
       phone_number: requiredData.phone_number,

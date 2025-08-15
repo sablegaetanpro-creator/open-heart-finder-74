@@ -8,16 +8,58 @@ export interface Profile {
   looking_for: 'homme' | 'femme' | 'les_deux';
   relationship_type: 'amitie' | 'relation_serieuse' | 'relation_casuelle' | 'mariage';
   smoker: boolean;
-  animals: 'aime_animaux' | 'n_aime_pas_animaux' | 'allergie_animaux';
-  children: 'veut_enfants' | 'ne_veut_pas_enfants' | 'a_deja_enfants' | 'pas_sur';
+  animals: string;
+  children: string;
   profile_photo_url: string;
+  additional_photos?: string[];
   bio?: string;
   location?: string;
   max_distance: number;
-  interests: string[];
+  interests?: string[];
+  languages?: string[];
+  height?: number;
+  weight?: number;
+  profession?: string;
+  education?: string;
+  exercise_frequency?: string;
+  drinks?: string;
+  has_pets?: boolean;
+  pets_description?: string;
+  relationship_status?: string;
+  wants_kids?: string;
+  body_type?: string;
+  ethnicity?: string;
+  religion?: string;
+  politics?: string;
+  zodiac_sign?: string;
+  phone_number?: string;
+  instagram_handle?: string;
+  spotify_anthem?: string;
+  is_verified?: boolean;
   is_profile_complete: boolean;
+  last_active?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface FilterOptions {
+  minAge?: number;
+  maxAge?: number;
+  maxDistance?: number;
+  gender?: string;
+  relationshipType?: string;
+  smoker?: boolean;
+  animals?: string;
+  children?: string;
+  height?: [number, number];
+  bodyType?: string[];
+  education?: string[];
+  drinks?: string[];
+  exercise?: string[];
+  religion?: string;
+  politics?: string;
+  profession?: string[];
+  interests?: string[];
 }
 
 export interface Swipe {
