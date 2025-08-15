@@ -12,14 +12,14 @@ export class OfflineDataManager {
 
   // Profile Management
   public async getProfiles(excludeUserIds: string[] = [], limit: number = 50): Promise<LocalProfile[]> {
-    const allProfiles = await offlineDb.profiles
-      .where('is_profile_complete')
-      .equals(1)
-      .toArray();
+    // Get all profiles and filter for complete ones
+    const allProfiles = await offlineDb.profiles.toArray();
+    const completeProfiles = allProfiles.filter(profile => 
+      (profile.is_profile_complete === true || profile.is_profile_complete as any === 1) &&
+      !excludeUserIds.includes(profile.user_id)
+    );
 
-    return allProfiles
-      .filter(profile => !excludeUserIds.includes(profile.user_id))
-      .slice(0, limit);
+    return completeProfiles.slice(0, limit);
   }
 
   public async getProfileByUserId(userId: string): Promise<LocalProfile | undefined> {
