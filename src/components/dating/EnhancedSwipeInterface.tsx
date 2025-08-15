@@ -29,6 +29,19 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
     }
   }, [user, profile]);
 
+  // Listen for data refresh events (triggered when a like is removed)
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      console.log('🔄 Rafraîchissement des données de découverte suite à suppression de like');
+      if (user && profile) {
+        loadProfiles();
+      }
+    };
+
+    window.addEventListener('refresh-data', handleDataRefresh);
+    return () => window.removeEventListener('refresh-data', handleDataRefresh);
+  }, [user, profile]);
+
   const loadProfiles = async () => {
     if (!user || !profile) return;
 

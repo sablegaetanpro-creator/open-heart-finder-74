@@ -89,15 +89,18 @@ const Index = () => {
           profile={selectedProfile}
           onBack={() => setCurrentView('profile')}
           onRemoveLike={async (profileId) => {
-            console.log('Removing like for profile:', profileId);
-            // Switch back to profile view and force refresh
-            setCurrentView('profile');
-            setActiveTab('profile');
-            // Force complete page reload to refresh all data
+            console.log('🔄 Suppression du like terminée pour:', profileId);
+            
+            // Retour à l'onglet découvrir directement
+            setActiveTab('decouvrir');
+            setCurrentView('discover');
+            
+            // Forcer le rechargement des composants sans reload de page
             setTimeout(() => {
-              window.location.hash = '#profile';
-              window.location.reload();
-            }, 100);
+              window.location.hash = '#decouvrir';
+              // Trigger a custom event to refresh data
+              window.dispatchEvent(new CustomEvent('refresh-data'));
+            }, 500);
           }}
         />
       ) : null;
