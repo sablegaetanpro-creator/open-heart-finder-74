@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingHero from '@/components/dating/OnboardingHero';
-import OfflineSwipeInterface from '@/components/dating/OfflineSwipeInterface';
+import SingleProfileSwipeInterface from '@/components/dating/SingleProfileSwipeInterface';
 import EnhancedMessagesView from '@/components/dating/EnhancedMessagesView';
 import ProfileView from '@/components/dating/ProfileView';
 import SettingsPage from '@/components/dating/SettingsPage';
@@ -100,7 +100,7 @@ const Index = () => {
       case 'discover':
         return (
           <div className="flex-1">
-            <OfflineSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
           </div>
         );
       case 'messages':
@@ -120,7 +120,7 @@ const Index = () => {
         default:
         return (
           <div className="flex-1">
-            <OfflineSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
           </div>
         );
     }
