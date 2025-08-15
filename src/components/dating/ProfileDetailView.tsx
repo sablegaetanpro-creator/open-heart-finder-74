@@ -1,5 +1,5 @@
-import React from 'react';
-import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,9 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-hidden p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Profil de {profile.first_name}</DialogTitle>
+        </DialogHeader>
         <ScrollArea className="h-full">
           <div className="relative">
             {/* Main Photo */}

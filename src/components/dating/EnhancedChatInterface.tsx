@@ -519,14 +519,14 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
           type="file"
           accept="image/*"
           onChange={handleImageUpload}
-          className="hidden"
+          style={{ display: 'none' }}
         />
         <input
           ref={videoInputRef}
           type="file"
           accept="video/*"
           onChange={handleVideoUpload}
-          className="hidden"
+          style={{ display: 'none' }}
         />
       </div>
     </div>

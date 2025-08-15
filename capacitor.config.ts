@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'LoveConnect - App de Rencontres',
   webDir: 'dist',
   server: {
-    url: 'http://localhost:3000',
+    url: 'https://4300ab76-ad1b-4084-8ca9-03e4344e1aff.lovableproject.com?forceHideBadge=true',
     cleartext: true
   },
   android: {
