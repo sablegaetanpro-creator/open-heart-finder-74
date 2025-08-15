@@ -347,11 +347,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         .from('likes_revealed')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
 
-      if (!error && data) {
-        setHasRevealedLikes(true);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking revealed likes:', error);
+        return;
       }
+
+      setHasRevealedLikes(!!data);
     } catch (error) {
       console.error('Error checking revealed likes:', error);
     }
