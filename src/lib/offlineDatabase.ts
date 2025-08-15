@@ -117,3 +117,8 @@ class OfflineDatabase extends Dexie {
 }
 
 export const offlineDb = new OfflineDatabase();
+
+// Make it globally accessible for components
+if (typeof window !== 'undefined') {
+  (window as any).offlineDb = offlineDb;
+}

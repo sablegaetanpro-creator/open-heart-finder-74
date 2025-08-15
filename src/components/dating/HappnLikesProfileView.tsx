@@ -81,6 +81,26 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
 
       if ((data as any)?.success) {
         console.log('✅ Like supprimé avec succès:', data);
+        
+        // Remove from local database immediately
+        await (window as any).offlineDb?.swipes
+          ?.where('swiper_id').equals(user.id)
+          .and((swipe: any) => swipe.swiped_id === profile.user_id && swipe.is_like === true)
+          .delete();
+
+        // Also remove any associated matches from local database
+        await (window as any).offlineDb?.matches
+          ?.where(['user1_id', 'user2_id']).anyOf([
+            [user.id, profile.user_id],
+            [profile.user_id, user.id]
+          ])
+          .delete();
+
+        console.log('🗄️ Suppression des données locales terminée');
+
+        // Trigger data refresh
+        window.dispatchEvent(new CustomEvent('refresh-data'));
+        
         toast({
           title: "✅ Like retiré avec succès",
           description: `${profile.first_name} retournera dans Découvrir`,
