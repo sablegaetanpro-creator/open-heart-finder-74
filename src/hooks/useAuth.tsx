@@ -23,58 +23,108 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        // Check for existing session first
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+        
+        if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          if (session?.user) {
+            // Fetch profile with error handling
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+              
+              if (mounted) {
+                setProfile(profileData as Profile);
+              }
+            } catch (profileError) {
+              console.error('Profile fetch error:', profileError);
+              if (mounted) {
+                setProfile(null);
+              }
+            }
+          } else {
+            setProfile(null);
+          }
+          
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
+        
+        console.log('Auth state change:', event, session?.user?.id);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          // Fetch user profile
-          try {
-            const { data: profileData, error } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .maybeSingle();
+        if (session?.user && event !== 'SIGNED_OUT') {
+          // Defer profile fetching to avoid blocking
+          setTimeout(async () => {
+            if (!mounted) return;
             
-            if (error) {
-              console.error('Error fetching profile:', error);
+            try {
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle();
+              
+              if (mounted) {
+                setProfile(profileData as Profile);
+              }
+            } catch (error) {
+              console.error('Profile fetch in auth change:', error);
+              if (mounted) {
+                setProfile(null);
+              }
             }
-            
-            setProfile(profileData as Profile);
-          } catch (error) {
-            console.error('Profile fetch error:', error);
-            setProfile(null);
-          } finally {
-            setLoading(false);
-          }
+          }, 100);
         } else {
           setProfile(null);
+        }
+        
+        if (mounted) {
           setLoading(false);
         }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Session error:', error);
-        setLoading(false);
-        return;
-      }
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (!session) {
-        setLoading(false);
-      }
-    }).catch((error) => {
-      console.error('Get session error:', error);
-      setLoading(false);
-    });
+    initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, profileData: Partial<Profile>) => {
