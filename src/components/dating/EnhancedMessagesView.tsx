@@ -21,7 +21,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import ChatInterface from './ChatInterface';
+import EnhancedChatInterface from './EnhancedChatInterface';
 import ProfileDetailView from './ProfileDetailView';
 
 interface MatchWithProfile {
@@ -84,8 +84,8 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
   // Admin user mock
   const adminUser = {
     id: 'admin',
-    first_name: 'Assistant',
-    profile_photo_url: '/placeholder.svg',
+    name: 'Assistant',
+    avatar: '/placeholder.svg',
     age: 0
   };
 
@@ -116,9 +116,18 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
         })
         .subscribe();
 
+      // Écouter les événements de rafraîchissement
+      const handleRefresh = () => {
+        console.log('🔄 Rafraîchissement des messages...');
+        loadData();
+      };
+      
+      window.addEventListener('refresh-data', handleRefresh);
+
       return () => {
         matchesSubscription.unsubscribe();
         messagesSubscription.unsubscribe();
+        window.removeEventListener('refresh-data', handleRefresh);
       };
     }
   }, [user]);
@@ -134,7 +143,7 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
     setLoading(false);
   };
 
-  const loadMatches = async () => {
+    const loadMatches = async () => {
     if (!user) return;
 
     try {
@@ -188,9 +197,61 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
         })
       );
 
+      // Ajouter les matches locaux si aucun match Supabase
+      if (processedMatches.length === 0) {
+        const { offlineDataManager } = await import('@/lib/offlineDataManager');
+        const localMatches = await offlineDataManager.getUserMatches(user.id);
+        if (localMatches.length > 0) {
+          console.log('📱 Affichage des matches locaux:', localMatches.length);
+          // Convertir les matches locaux au bon format
+          const localMatchesFormatted = localMatches.map(match => ({
+            ...match,
+            profile: {
+              id: match.user1_id === user.id ? match.user2_id : match.user1_id,
+              user_id: match.user1_id === user.id ? match.user2_id : match.user1_id,
+              first_name: 'Utilisateur Local',
+              profile_photo_url: '/placeholder.svg',
+              age: 25
+            },
+            lastMessage: null,
+            unreadCount: 0
+          }));
+          setMatches(localMatchesFormatted);
+          return;
+        }
+      }
+      
       setMatches(processedMatches);
     } catch (error) {
       console.error('Error loading matches:', error);
+    }
+  };
+
+  // Ouvrir la fiche profil complète (avec bio, etc.) depuis la messagerie
+  const openProfileByUserId = async (userId: string | undefined) => {
+    if (!userId) return;
+    console.log('🔄 Chargement du profil pour user_id:', userId);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('❌ Erreur lors du chargement du profil:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('✅ Profil chargé:', data);
+        setSelectedProfile(data);
+        setShowProfileDetail(true);
+      } else {
+        console.log('⚠️ Aucun profil trouvé pour user_id:', userId);
+      }
+    } catch (e) {
+      console.error('❌ Erreur loading profile detail from chat header:', e);
     }
   };
 
@@ -274,11 +335,10 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
         .from('likes_revealed')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
-        setHasRevealedLikes(true);
-      }
+      if (error && (error as any).status !== 406 && error.code !== 'PGRST116') throw error;
+      setHasRevealedLikes(!!data);
     } catch (error) {
       console.error('Error checking revealed likes:', error);
     }
@@ -456,8 +516,7 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
                         variant="outline"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedProfile(match.profile);
-                          setShowProfileDetail(true);
+                          openProfileByUserId(match.profile.user_id);
                         }}
                       >
                         Profil
@@ -564,23 +623,39 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
         </DialogContent>
       </Dialog>
 
-      {/* Chat Interface */}
-      {selectedMatch && (
-        <ChatInterface
-          open={showChat}
-          onOpenChange={setShowChat}
-          matchId={selectedMatch.id}
-          otherUser={selectedMatch.profile}
-        />
+      {/* Chat Interface (enhanced with media upload) */}
+      {selectedMatch && showChat && (
+        <div className="fixed inset-0 z-[9999] bg-background flex" style={{ height: '100dvh' }}>
+          <EnhancedChatInterface
+            matchId={selectedMatch.id}
+            otherUser={{
+              id: selectedMatch.profile.id,
+              name: selectedMatch.profile.first_name,
+              avatar: selectedMatch.profile.profile_photo_url,
+              age: selectedMatch.profile.age,
+            }}
+            onBack={() => setShowChat(false)}
+            onShowProfile={() => {
+              setShowChat(false);
+              openProfileByUserId(selectedMatch.profile.user_id);
+            }}
+          />
+        </div>
       )}
 
       {/* Admin Chat Interface */}
-      <ChatInterface
-        open={showAdminChat}
-        onOpenChange={setShowAdminChat}
-        matchId="admin-support"
-        otherUser={adminUser}
-      />
+      {showAdminChat && (
+        <div className="fixed inset-0 z-[9999] bg-background flex" style={{ height: '100dvh' }}>
+          <EnhancedChatInterface
+            matchId="admin-support"
+            otherUser={adminUser}
+            onBack={() => setShowAdminChat(false)}
+            onShowProfile={() => {
+              setShowAdminChat(false);
+            }}
+          />
+        </div>
+      )}
 
       {/* Profile Detail View */}
       <ProfileDetailView

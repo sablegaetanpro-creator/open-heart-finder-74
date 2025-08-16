@@ -44,9 +44,19 @@ interface SwipeableCardProps {
   profile: Profile;
   onSwipe: (direction: 'left' | 'right', profileId: string) => void;
   style?: React.CSSProperties;
+  draggable?: boolean;
+  showLikeButton?: boolean;
+  showPassButton?: boolean;
 }
 
-const SwipeableCard: React.FC<SwipeableCardProps> = ({ profile, onSwipe, style }) => {
+const SwipeableCard: React.FC<SwipeableCardProps> = ({ 
+  profile, 
+  onSwipe, 
+  style,
+  draggable = true,
+  showLikeButton = true,
+  showPassButton = true,
+}) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
   const [showPhotoGallery, setShowPhotoGallery] = useState(false);
@@ -112,10 +122,10 @@ const SwipeableCard: React.FC<SwipeableCardProps> = ({ profile, onSwipe, style }
         opacity,
         ...style,
       }}
-      drag="x"
+      drag={draggable ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
-      onDragEnd={handleDragEnd}
-      whileTap={{ scale: 0.95 }}
+      onDragEnd={draggable ? handleDragEnd : undefined}
+      whileTap={draggable ? { scale: 0.95 } : undefined}
     >
       <Card className="w-full h-full bg-card border-0 shadow-xl overflow-hidden">
         <div className="relative h-full flex flex-col">
@@ -307,23 +317,26 @@ const SwipeableCard: React.FC<SwipeableCardProps> = ({ profile, onSwipe, style }
 
           {/* Boutons d'action */}
           <div className="flex justify-center items-center space-x-6 p-4 bg-background">
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full w-14 h-14 p-0 border-2 border-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={handlePass}
-            >
-              <X className="w-6 h-6" />
-            </Button>
-            
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full w-14 h-14 p-0 border-2 border-love hover:bg-love hover:text-love-foreground"
-              onClick={handleLike}
-            >
-              <Heart className="w-6 h-6" />
-            </Button>
+            {showPassButton && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full w-14 h-14 p-0 border-2 border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={handlePass}
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            )}
+            {showLikeButton && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full w-14 h-14 p-0 border-2 border-love hover:bg-love hover:text-love-foreground"
+                onClick={handleLike}
+              >
+                <Heart className="w-6 h-6" />
+              </Button>
+            )}
           </div>
         </div>
       </Card>

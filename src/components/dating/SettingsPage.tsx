@@ -18,12 +18,14 @@ import {
   Filter,
   Eye,
   Moon,
-  Sun
+  Sun,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import EnhancedFilterDialog from './EnhancedFilterDialog';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 
 interface SettingsPageProps {
   onNavigateBack?: () => void;
@@ -71,6 +73,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
       } catch (error) {
         console.error('Erreur lors du chargement des réglages:', error);
       }
+    }
+    // Synchroniser avec les filtres si disponibles
+    try {
+      const savedFiltersRaw = localStorage.getItem('dating_filters');
+      if (savedFiltersRaw) {
+        const f = JSON.parse(savedFiltersRaw);
+        setSettings(prev => ({
+          ...prev,
+          discovery: {
+            ...prev.discovery,
+            maxDistance: typeof f.maxDistance === 'number' ? f.maxDistance : prev.discovery.maxDistance,
+            ageRange: Array.isArray(f.ageRange) ? f.ageRange : prev.discovery.ageRange,
+            showMe: typeof f.showMe === 'boolean' ? f.showMe : prev.discovery.showMe
+          },
+          privacy: {
+            ...prev.privacy,
+            showDistance: typeof f.showDistance === 'boolean' ? f.showDistance : prev.privacy.showDistance
+          }
+        }));
+      }
+    } catch (e) {
+      console.warn('Impossible de lire dating_filters', e);
     }
   }, []);
 
@@ -149,10 +173,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => {
-                console.log('Ouvrir les filtres depuis les réglages...');
-                setShowFilterDialog(true);
-              }}
+              onClick={() => setShowFilterDialog(true)}
             >
               <Filter className="w-4 h-4 mr-2" />
               Modifier les filtres
@@ -162,10 +183,40 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Distance maximale: {settings.discovery.maxDistance} km</Label>
               <Slider
                 value={[settings.discovery.maxDistance]}
-                onValueChange={(value) => setSettings(prev => ({
-                  ...prev,
-                  discovery: { ...prev.discovery, maxDistance: value[0] }
-                }))}
+                onValueChange={(value) => {
+                  const newMax = value[0];
+                  setSettings(prev => ({
+                    ...prev,
+                    discovery: { ...prev.discovery, maxDistance: newMax }
+                  }));
+                  // Mettre à jour dating_filters
+                  try {
+                    const raw = localStorage.getItem('dating_filters');
+                    const filters = raw ? JSON.parse(raw) : {
+                      ageRange: [18, 65],
+                      maxDistance: 50,
+                      gender: 'tous',
+                      relationshipType: 'tous',
+                      height: [150, 200],
+                      bodyType: [],
+                      smoker: 'tous',
+                      drinks: 'tous',
+                      animals: 'tous',
+                      children: 'tous',
+                      religion: [],
+                      politics: [],
+                      education: [],
+                      profession: [],
+                      interests: [],
+                      exerciseFrequency: 'tous'
+                    };
+                    filters.maxDistance = newMax;
+                    localStorage.setItem('dating_filters', JSON.stringify(filters));
+                    window.dispatchEvent(new Event('refresh-data'));
+                  } catch (e) {
+                    console.warn('Impossible de mettre à jour dating_filters', e);
+                  }
+                }}
                 min={1}
                 max={200}
                 step={1}
@@ -177,10 +228,40 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Tranche d'âge: {settings.discovery.ageRange[0]} - {settings.discovery.ageRange[1]} ans</Label>
               <Slider
                 value={settings.discovery.ageRange}
-                onValueChange={(value) => setSettings(prev => ({
-                  ...prev,
-                  discovery: { ...prev.discovery, ageRange: value as [number, number] }
-                }))}
+                onValueChange={(value) => {
+                  const newRange = value as [number, number];
+                  setSettings(prev => ({
+                    ...prev,
+                    discovery: { ...prev.discovery, ageRange: newRange }
+                  }));
+                  // Mettre à jour dating_filters
+                  try {
+                    const raw = localStorage.getItem('dating_filters');
+                    const filters = raw ? JSON.parse(raw) : {
+                      ageRange: [18, 65],
+                      maxDistance: 50,
+                      gender: 'tous',
+                      relationshipType: 'tous',
+                      height: [150, 200],
+                      bodyType: [],
+                      smoker: 'tous',
+                      drinks: 'tous',
+                      animals: 'tous',
+                      children: 'tous',
+                      religion: [],
+                      politics: [],
+                      education: [],
+                      profession: [],
+                      interests: [],
+                      exerciseFrequency: 'tous'
+                    };
+                    filters.ageRange = newRange;
+                    localStorage.setItem('dating_filters', JSON.stringify(filters));
+                    window.dispatchEvent(new Event('refresh-data'));
+                  } catch (e) {
+                    console.warn('Impossible de mettre à jour dating_filters', e);
+                  }
+                }}
                 min={18}
                 max={80}
                 step={1}
@@ -203,10 +284,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Nouveaux matches</Label>
               <Switch
                 checked={settings.notifications.newMatches}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, newMatches: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, newMatches: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    notifications: { ...settings.notifications, newMatches: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                }}
               />
             </div>
             
@@ -214,10 +304,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Messages</Label>
               <Switch
                 checked={settings.notifications.messages}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, messages: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, messages: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    notifications: { ...settings.notifications, messages: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                }}
               />
             </div>
             
@@ -225,10 +324,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Likes reçus</Label>
               <Switch
                 checked={settings.notifications.likes}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, likes: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, likes: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    notifications: { ...settings.notifications, likes: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                }}
               />
             </div>
             
@@ -236,16 +344,25 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               <Label>Communications marketing</Label>
               <Switch
                 checked={settings.notifications.marketing}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  notifications: { ...prev.notifications, marketing: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    notifications: { ...prev.notifications, marketing: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    notifications: { ...settings.notifications, marketing: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                }}
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Confidentialité */}
+        {/* Confidentialité: seules options utiles */}
         <Card>
           <CardHeader className="flex flex-row items-center space-y-0 pb-2">
             <CardTitle className="flex items-center gap-2">
@@ -255,27 +372,37 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Afficher mon âge</Label>
-              <Switch
-                checked={settings.privacy.showAge}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  privacy: { ...prev.privacy, showAge: checked }
-                }))}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
               <Label>Afficher ma distance</Label>
               <Switch
                 checked={settings.privacy.showDistance}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  privacy: { ...prev.privacy, showDistance: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    privacy: { ...prev.privacy, showDistance: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    privacy: { ...settings.privacy, showDistance: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                  
+                  // Mettre à jour les filtres de découverte
+                  try {
+                    const currentFilters = JSON.parse(localStorage.getItem('dating_filters') || '{}');
+                    const updatedFilters = {
+                      ...currentFilters,
+                      showDistance: checked
+                    };
+                    localStorage.setItem('dating_filters', JSON.stringify(updatedFilters));
+                    window.dispatchEvent(new Event('refresh-data'));
+                  } catch (error) {
+                    console.error('Erreur lors de la mise à jour des filtres:', error);
+                  }
+                }}
               />
             </div>
-            
           </CardContent>
         </Card>
 
@@ -297,10 +424,32 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
               </div>
               <Switch
                 checked={settings.discovery.showMe}
-                onCheckedChange={(checked) => setSettings(prev => ({
-                  ...prev,
-                  discovery: { ...prev.discovery, showMe: checked }
-                }))}
+                onCheckedChange={(checked) => {
+                  setSettings(prev => ({
+                    ...prev,
+                    discovery: { ...prev.discovery, showMe: checked }
+                  }));
+                  
+                  // Sauvegarder immédiatement dans localStorage
+                  const updatedSettings = {
+                    ...settings,
+                    discovery: { ...settings.discovery, showMe: checked }
+                  };
+                  localStorage.setItem('dating-app-settings', JSON.stringify(updatedSettings));
+                  
+                  // Mettre à jour les filtres de découverte
+                  try {
+                    const currentFilters = JSON.parse(localStorage.getItem('dating_filters') || '{}');
+                    const updatedFilters = {
+                      ...currentFilters,
+                      showMe: checked
+                    };
+                    localStorage.setItem('dating_filters', JSON.stringify(updatedFilters));
+                    window.dispatchEvent(new Event('refresh-data'));
+                  } catch (error) {
+                    console.error('Erreur lors de la mise à jour des filtres:', error);
+                  }
+                }}
               />
             </div>
           </CardContent>
@@ -350,6 +499,48 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Synchronisation */}
+        <Card>
+          <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+            <CardTitle>Synchronisation des données</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={async () => {
+                try {
+                  toast({
+                    title: "Synchronisation en cours...",
+                    description: "Mise à jour des données...",
+                  });
+                  
+                  await offlineDataManager.triggerSync();
+                  
+                  toast({
+                    title: "Synchronisation réussie",
+                    description: "Toutes les données ont été mises à jour",
+                  });
+                  
+                  // Forcer le rafraîchissement
+                  window.dispatchEvent(new Event('refresh-data'));
+                } catch (error) {
+                  toast({
+                    title: "Erreur de synchronisation",
+                    description: "Impossible de synchroniser les données",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Synchroniser maintenant
+            </Button>
           </CardContent>
         </Card>
 
@@ -429,6 +620,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
         open={showFilterDialog}
         onOpenChange={setShowFilterDialog}
         onFiltersApply={() => {
+          try {
+            const raw = localStorage.getItem('dating_filters');
+            if (raw) {
+              const f = JSON.parse(raw);
+              setSettings(prev => ({
+                ...prev,
+                discovery: {
+                  ...prev.discovery,
+                  maxDistance: typeof f.maxDistance === 'number' ? f.maxDistance : prev.discovery.maxDistance,
+                  ageRange: Array.isArray(f.ageRange) ? f.ageRange : prev.discovery.ageRange
+                }
+              }));
+            }
+          } catch {}
+          window.dispatchEvent(new Event('refresh-data'));
           toast({
             title: "Filtres appliqués",
             description: "Vos préférences ont été mises à jour",

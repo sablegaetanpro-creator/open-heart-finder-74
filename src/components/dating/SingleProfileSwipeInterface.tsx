@@ -18,6 +18,30 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
+// Helpers: parse "lat,lng" and compute Haversine distance (km)
+const parseLatLng = (location?: string): { lat: number; lng: number } | null => {
+  if (!location) return null;
+  const parts = location.split(',').map(p => parseFloat(p.trim()));
+  if (parts.length !== 2 || parts.some(n => Number.isNaN(n))) return null;
+  return { lat: parts[0], lng: parts[1] };
+};
+
+const haversineKm = (a?: string, b?: string): number | null => {
+  const A = parseLatLng(a);
+  const B = parseLatLng(b);
+  if (!A || !B) return null;
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371; // km
+  const dLat = toRad(B.lat - A.lat);
+  const dLng = toRad(B.lng - A.lng);
+  const lat1 = toRad(A.lat);
+  const lat2 = toRad(B.lat);
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+};
+
 interface SingleProfileSwipeInterfaceProps {
   onAdView?: () => void;
 }
@@ -34,36 +58,140 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
   const [touchStart, setTouchStart] = useState<{x: number, y: number} | null>(null);
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
   const [swipeDistance, setSwipeDistance] = useState(0);
+  const [discoverEnabled, setDiscoverEnabled] = useState(true);
 
   const currentProfile = profiles[currentProfileIndex];
 
   useEffect(() => {
     if (user && profile) {
+      // Lire réglage "Me montrer dans la découverte"
+      try {
+        const raw = localStorage.getItem('dating-app-settings');
+        if (raw) {
+          const s = JSON.parse(raw);
+          setDiscoverEnabled(s?.discovery?.showMe !== false);
+        } else {
+          setDiscoverEnabled(true);
+        }
+      } catch {
+        setDiscoverEnabled(true);
+      }
       loadProfilesFromLocal();
     }
   }, [user, profile]);
 
+  // Recharger quand les filtres changent ailleurs (réglages/modale)
+  useEffect(() => {
+    const handler = () => {
+      if (user && profile) {
+        try {
+          const raw = localStorage.getItem('dating-app-settings');
+          if (raw) {
+            const s = JSON.parse(raw);
+            setDiscoverEnabled(s?.discovery?.showMe !== false);
+          }
+        } catch {}
+        loadProfilesFromLocal();
+        
+        // Si on est en ligne, forcer une synchronisation après un délai
+        if (isOnline) {
+          setTimeout(async () => {
+            try {
+              await triggerSync();
+              loadProfilesFromLocal();
+              console.log('🔄 Synchronisation forcée après refresh-data');
+            } catch (error) {
+              console.error('❌ Erreur synchronisation forcée:', error);
+            }
+          }, 500);
+        }
+      }
+    };
+    window.addEventListener('refresh-data', handler);
+    return () => window.removeEventListener('refresh-data', handler);
+  }, [user, profile, isOnline]);
+
   const loadProfilesFromLocal = async () => {
     if (!user || !profile) return;
 
+    console.log('🔄 Début du chargement des profils...');
+    console.log('👤 User:', user.id);
+    console.log('📋 Profile:', profile);
+
     try {
+      console.log('🔍 Vérification des paramètres de découverte...');
+      // Lire le paramètre "Me montrer dans la découverte" (pour l'affichage du message)
+      try {
+        const raw = localStorage.getItem('dating-app-settings');
+        if (raw) {
+          const s = JSON.parse(raw);
+          const showMe = s?.discovery?.showMe !== false;
+          setDiscoverEnabled(showMe);
+          console.log('🎯 Paramètre "Me montrer" activé:', showMe);
+        }
+      } catch (error) {
+        console.log('⚠️ Erreur lecture paramètres découverte:', error);
+      }
+
       const userSwipes = await offlineDataManager.getUserSwipes(user.id);
+      console.log('💕 Swipes de l\'utilisateur:', userSwipes.length);
+      
       const swipedUserIds = userSwipes.map(swipe => swipe.swiped_id);
       const excludeIds = [user.id, ...swipedUserIds];
-      const localProfiles = await offlineDataManager.getProfiles(excludeIds, 50);
+      console.log('🚫 IDs exclus:', excludeIds);
       
-      const compatibleProfiles = localProfiles.filter(p => {
+      const savedFiltersRaw = localStorage.getItem('dating_filters');
+      const savedFilters = savedFiltersRaw ? JSON.parse(savedFiltersRaw) : null;
+      console.log('🔍 Filtres sauvegardés:', savedFilters);
+      
+      const localProfiles = await offlineDataManager.getProfiles(excludeIds, 200);
+      console.log('📊 Profils locaux trouvés:', localProfiles.length);
+
+      const compatibleProfiles = localProfiles.filter((p: any) => {
         const genderMatch = (
           (profile.looking_for === 'les_deux' || profile.looking_for === p.gender) &&
           (p.looking_for === 'les_deux' || p.looking_for === profile.gender)
         );
-        return genderMatch;
+        if (!genderMatch) return false;
+        if (!savedFilters) return true;
+        // Filtre Genre explicite (mapper non_binaire -> autre)
+        if (savedFilters.gender && savedFilters.gender !== 'tous') {
+          const targetGender = savedFilters.gender === 'non_binaire' ? 'autre' : savedFilters.gender;
+          if (p.gender !== targetGender) return false;
+        }
+        if (p.age < savedFilters.ageRange[0] || p.age > savedFilters.ageRange[1]) return false;
+        if (savedFilters.relationshipType !== 'tous' && (p.relationship_type || p.relationshipType) !== savedFilters.relationshipType) return false;
+        // Taille: exiger une valeur et qu'elle soit dans la plage
+        if (p.height == null || p.height < savedFilters.height[0] || p.height > savedFilters.height[1]) return false;
+        if (savedFilters.smoker !== 'tous' && String(p.smoker) !== savedFilters.smoker) return false;
+        if (savedFilters.drinks !== 'tous' && p.drinks !== savedFilters.drinks) return false;
+        if (savedFilters.animals !== 'tous' && p.animals !== savedFilters.animals) return false;
+        if (savedFilters.children !== 'tous' && p.children !== savedFilters.children) return false;
+        if (savedFilters.exerciseFrequency !== 'tous' && p.exercise_frequency !== savedFilters.exerciseFrequency) return false;
+        if (savedFilters.bodyType?.length && !savedFilters.bodyType.includes(p.body_type || p.bodyType || '')) return false;
+        if (savedFilters.religion?.length && !savedFilters.religion.includes(p.religion || '')) return false;
+        if (savedFilters.politics?.length && !savedFilters.politics.includes(p.politics || '')) return false;
+        if (savedFilters.education?.length && !savedFilters.education.some((v: string) => (p.education || '').includes(v))) return false;
+        if (savedFilters.profession?.length && !savedFilters.profession.some((v: string) => (p.profession || '').includes(v))) return false;
+        if (savedFilters.interests?.length) {
+          const hasCommon = (p.interests || []).some((i: string) => savedFilters.interests.includes(i));
+          if (!hasCommon) return false;
+        }
+        // Distance max si positions disponibles
+        if (typeof savedFilters.maxDistance === 'number') {
+          const d = haversineKm((profile as any).location, (p as any).location);
+          if (d != null && d > savedFilters.maxDistance) return false;
+        }
+        return true;
       });
+
+      console.log('✅ Profils compatibles après filtrage:', compatibleProfiles.length);
 
       setProfiles(compatibleProfiles as Profile[]);
       setCurrentProfileIndex(0);
       
       if (compatibleProfiles.length === 0 && isOnline) {
+        console.log('🔄 Aucun profil trouvé, synchronisation...');
         await triggerSync();
       }
       
@@ -85,21 +213,34 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
     const isLike = direction === 'right' || direction === 'super';
     const isSuperLike = direction === 'super';
 
+    console.log('🔄 Début du swipe:', { direction, isLike, isSuperLike, targetUser: currentProfile.user_id });
+
     try {
       await offlineDataManager.createSwipe(currentProfile.user_id, isLike, isSuperLike);
+      console.log('✅ Swipe créé avec succès');
 
       if (isLike) {
+        console.log('🔍 Vérification des matches...');
         const userMatches = await offlineDataManager.getUserMatches(user.id);
+        console.log('📊 Matches actuels:', userMatches.length);
+        
         const hasMatch = userMatches.some(match => 
           (match.user1_id === user.id && match.user2_id === currentProfile.user_id) ||
           (match.user1_id === currentProfile.user_id && match.user2_id === user.id)
         );
+
+        console.log('🎯 Match trouvé:', hasMatch);
 
         if (hasMatch) {
           toast({
             title: isSuperLike ? "🌟 Super Match !" : "🎉 C'est un match !",
             description: "Vous pouvez maintenant vous envoyer des messages"
           });
+          
+          // Forcer le rafraîchissement des messages
+          setTimeout(() => {
+            window.dispatchEvent(new Event('refresh-data'));
+          }, 1000);
         } else {
           toast({
             title: isSuperLike ? "⭐ Super Like envoyé !" : "❤️ Like envoyé !",
@@ -139,7 +280,9 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
   const handleRefresh = async () => {
     if (isOnline && !isSyncing) {
       setIsLoading(true);
+      console.log('🔄 Synchronisation forcée...');
       await triggerSync();
+      console.log('✅ Synchronisation terminée');
       setTimeout(() => {
         loadProfilesFromLocal();
       }, 1000);
@@ -163,11 +306,13 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
           <div className="w-20 h-20 bg-gradient-love rounded-full flex items-center justify-center mx-auto mb-4">
             <Heart className="w-10 h-10 text-white" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">Plus de profils !</h3>
+          <h3 className="text-xl font-semibold mb-2">{discoverEnabled ? 'Plus de profils !' : 'Découverte désactivée'}</h3>
           <p className="text-muted-foreground mb-6">
-            {isOnline 
+            {discoverEnabled
+              ? (isOnline 
               ? "Revenez plus tard pour découvrir de nouveaux profils."
-              : "Connectez-vous à internet pour charger plus de profils."
+                : "Connectez-vous à internet pour charger plus de profils.")
+              : "Activez l’option \"Me montrer dans la découverte\" dans les Réglages pour voir des profils."
             }
           </p>
           <div className="space-y-3">
@@ -189,6 +334,12 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
               {isSyncing ? 'Synchronisation...' : 'Actualiser'}
             </Button>
           </div>
+          {/* Mount dialog even in empty state so the button works */}
+          <EnhancedFilterDialog 
+            open={showFilterDialog}
+            onOpenChange={setShowFilterDialog}
+            onFiltersApply={loadProfilesFromLocal}
+          />
         </Card>
       </div>
     );

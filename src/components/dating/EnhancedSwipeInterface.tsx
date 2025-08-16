@@ -32,7 +32,6 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
   // Listen for data refresh events (triggered when a like is removed)
   useEffect(() => {
     const handleDataRefresh = () => {
-      console.log('🔄 Rafraîchissement des données de découverte suite à suppression de like');
       if (user && profile) {
         loadProfiles();
       }
@@ -53,13 +52,12 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         const { data: recentSwipes } = await supabase
           .from('swipes')
           .select('swiped_id')
-          .eq('user_id', user.id)
+          .eq('swiper_id', user.id)
           .or('is_like.eq.true,created_at.gte.' + new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString());
-        
         swipedIds = recentSwipes || [];
       }
 
-      const excludeIds = [user.id, ...(swipedIds?.map(s => s.swiped_id) || [])];
+      const swipedUserIds = (swipedIds || []).map(s => s.swiped_id).filter(Boolean);
 
       // Construire la requête de base
       let query = supabase
@@ -69,11 +67,9 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         .neq('user_id', user.id); // Exclure l'utilisateur actuel
 
       // Exclure les profils déjà swipés (sauf si forceRefresh)
-      if (!forceRefresh && excludeIds.length > 1) {
-        const swipedUserIds = excludeIds.filter(id => id !== user.id);
-        if (swipedUserIds.length > 0) {
-          query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
-        }
+      if (!forceRefresh && swipedUserIds.length > 0) {
+        const list = swipedUserIds.map((id: string) => `'${id}'`).join(',');
+        query = query.not('user_id', 'in', `(${list})`);
       }
 
       // Apply basic compatibility filters
@@ -92,18 +88,61 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
       const savedFiltersRaw = localStorage.getItem('dating_filters');
       const savedFilters = savedFiltersRaw ? JSON.parse(savedFiltersRaw) : null;
 
-      // Filter by mutual compatibility + saved filters
+      // Helpers distance
+      const parseLatLng = (location?: string): { lat: number; lng: number } | null => {
+        if (!location) return null;
+        const parts = location.split(',').map(p => parseFloat(p.trim()));
+        if (parts.length !== 2 || parts.some(n => Number.isNaN(n))) return null;
+        return { lat: parts[0], lng: parts[1] };
+      };
+      const haversineKm = (a?: string, b?: string): number | null => {
+        const A = parseLatLng(a);
+        const B = parseLatLng(b);
+        if (!A || !B) return null;
+        const toRad = (v: number) => (v * Math.PI) / 180;
+        const R = 6371;
+        const dLat = toRad(B.lat - A.lat);
+        const dLng = toRad(B.lng - A.lng);
+        const lat1 = toRad(A.lat);
+        const lat2 = toRad(B.lat);
+        const h = Math.sin(dLat/2)**2 + Math.sin(dLng/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+      };
+
+      // Filter by mutual compatibility + all saved filters
       const compatibleProfiles = data?.filter(p => {
-        if (p.looking_for === 'les_deux') return true;
-        return p.looking_for === profile.gender;
-      }).filter(p => {
+        // compatibilité réciproque
+        const genderOk = (profile.looking_for === 'les_deux' || p.gender === profile.looking_for) &&
+                         (p.looking_for === 'les_deux' || p.looking_for === profile.gender);
+        if (!genderOk) return false;
         if (!savedFilters) return true;
-        const withinAge = !savedFilters.ageRange || (p.age >= savedFilters.ageRange[0] && p.age <= savedFilters.ageRange[1]);
-        const relOk = !savedFilters.relationshipType || savedFilters.relationshipType === 'tous' || p.relationship_type === savedFilters.relationshipType;
-        return withinAge && relOk;
+
+        if (savedFilters.gender && savedFilters.gender !== 'tous' && p.gender !== savedFilters.gender) return false;
+        if (savedFilters.ageRange && (p.age < savedFilters.ageRange[0] || p.age > savedFilters.ageRange[1])) return false;
+        if (savedFilters.relationshipType && savedFilters.relationshipType !== 'tous' && p.relationship_type !== savedFilters.relationshipType) return false;
+        if (savedFilters.height && (p.height == null || p.height < savedFilters.height[0] || p.height > savedFilters.height[1])) return false;
+        if (savedFilters.bodyType?.length && !savedFilters.bodyType.includes(p.body_type || '')) return false;
+        if (savedFilters.smoker && savedFilters.smoker !== 'tous' && String(p.smoker) !== savedFilters.smoker) return false;
+        if (savedFilters.drinks && savedFilters.drinks !== 'tous' && p.drinks !== savedFilters.drinks) return false;
+        if (savedFilters.animals && savedFilters.animals !== 'tous' && p.animals !== savedFilters.animals) return false;
+        if (savedFilters.children && savedFilters.children !== 'tous' && p.children !== savedFilters.children) return false;
+        if (savedFilters.exerciseFrequency && savedFilters.exerciseFrequency !== 'tous' && p.exercise_frequency !== savedFilters.exerciseFrequency) return false;
+        if (savedFilters.religion?.length && !savedFilters.religion.includes(p.religion || '')) return false;
+        if (savedFilters.politics?.length && !savedFilters.politics.includes(p.politics || '')) return false;
+        if (savedFilters.education?.length && !savedFilters.education.some((v: string) => (p.education || '').includes(v))) return false;
+        if (savedFilters.profession?.length && !savedFilters.profession.some((v: string) => (p.profession || '').includes(v))) return false;
+        if (savedFilters.interests?.length) {
+          const hasCommon = (p.interests || []).some((i: string) => savedFilters.interests.includes(i));
+          if (!hasCommon) return false;
+        }
+        if (typeof savedFilters.maxDistance === 'number') {
+          const d = haversineKm(profile.location, p.location);
+          if (d != null && d > savedFilters.maxDistance) return false;
+        }
+        return true;
       }) || [];
 
-      console.log(`Profils trouvés: ${data?.length || 0}, Compatibles: ${compatibleProfiles.length}`);
+      // Stats de chargement (désactiver en prod)
       
       setProfiles(compatibleProfiles as Profile[]);
       setCurrentIndex(0);
@@ -134,11 +173,12 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
 
     try {
       // Record swipe
+      const target = profiles.find(p => p.id === profileId);
       const { error: swipeError } = await supabase
         .from('swipes')
         .insert({
-          user_id: user.id,
-          swiped_id: profileId,
+          swiper_id: user.id,
+          swiped_id: target?.user_id || '',
           is_like: isLike
         });
 
@@ -150,8 +190,8 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
         const { data: existingSwipe } = await supabase
           .from('swipes')
           .select('*')
-          .eq('user_id', swipedProfile?.user_id || '')
-          .eq('swiped_id', profile.id)
+          .eq('swiper_id', swipedProfile?.user_id || '')
+          .eq('swiped_id', user.id)
           .eq('is_like', true)
           .maybeSingle();
 
@@ -168,7 +208,8 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
               .from('matches')
               .insert({
                 user1_id: user.id < (swipedProfile?.user_id || '') ? user.id : (swipedProfile?.user_id || ''),
-                user2_id: user.id < (swipedProfile?.user_id || '') ? (swipedProfile?.user_id || '') : user.id
+                user2_id: user.id < (swipedProfile?.user_id || '') ? (swipedProfile?.user_id || '') : user.id,
+                is_active: true
               });
           }
 

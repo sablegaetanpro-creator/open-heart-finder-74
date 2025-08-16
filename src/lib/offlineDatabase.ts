@@ -113,6 +113,11 @@ class OfflineDatabase extends Dexie {
       premium_features: '++id, user_id, feature_type, is_active, expires_at, last_synced, is_dirty',
       sync_meta: '++table_name, last_sync, version'
     });
+
+    // Ajouter un index composé pour éviter l'erreur Dexie: KeyPath [user1_id+user2_id] ... not indexed
+    this.version(2).stores({
+      matches: '++id, user1_id, user2_id, [user1_id+user2_id], is_active, created_at, last_synced, is_dirty'
+    });
   }
 }
 

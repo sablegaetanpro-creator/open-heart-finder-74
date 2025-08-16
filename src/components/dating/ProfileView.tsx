@@ -5,7 +5,7 @@ import LikesRevealDialog from './LikesRevealDialog';
 import { offlineDataManager } from '@/lib/offlineDataManager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   MapPin, 
@@ -135,7 +135,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
       setReceivedLikes(processedLikes);
       
       // Pour débogage: afficher le nombre de likes reçus
-      console.log(`Likes reçus chargés: ${processedLikes.length}`);
+      
       
     } catch (error) {
       console.error('Error loading received likes:', error);
@@ -349,7 +349,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         .eq('user_id', user.id)
         .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && (error as any).status !== 406 && error.code !== 'PGRST116') {
         console.error('Error checking revealed likes:', error);
         return;
       }
@@ -361,6 +361,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
   };
 
   const handleRevealLikes = () => {
+    
+    toast({ title: 'Ouverture…', description: hasRevealedLikes ? 'Affichage des likes reçus' : 'Regarder une pub ou payer pour révéler' });
     if (hasRevealedLikes) {
       setShowLikesDialog(true);
     } else {
@@ -529,8 +531,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
             onClick={handleRevealLikes}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRevealLikes(); }}
+            aria-label="Voir likes reçus"
           >
-            <CardContent className="p-4">
+            <CardContent 
+              className="p-4"
+              onClick={handleRevealLikes}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRevealLikes(); }}
+              aria-label="Ouvrir les likes reçus"
+            >
               <div className="flex flex-col items-center space-y-2">
                 <div className="relative">
                   <Heart className="w-6 h-6 text-primary" />
@@ -613,7 +626,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
                 <div 
                   className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors"
                   onClick={() => {
-                    console.log('Ouvrir l\'éditeur de profil pour ajouter photo...');
                     setShowProfileEditor(true);
                   }}
                 >
@@ -641,6 +653,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Likes reçus ({receivedLikes.length})</DialogTitle>
+            <DialogDescription className="sr-only">Liste des personnes qui vous ont liké</DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-4">
@@ -687,6 +700,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Likes donnés ({givenLikes.length})</DialogTitle>
+            <DialogDescription className="sr-only">Liste des profils que vous avez likés</DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-4">
@@ -729,6 +743,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>🚀 Booster votre profil</DialogTitle>
+            <DialogDescription className="sr-only">Améliorez la visibilité de votre profil</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-center">
@@ -765,6 +780,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Voir qui vous a liké</DialogTitle>
+            <DialogDescription className="sr-only">Accédez à la liste des likes reçus</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-center text-muted-foreground">

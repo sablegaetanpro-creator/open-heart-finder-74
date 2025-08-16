@@ -1,0 +1,41 @@
+project_id = "sdhtskesilyxgmsvvxff"
+[auth]
+enabled = true
+site_url = "capacitor://localhost"
+additional_redirect_urls = [
+  "capacitor://localhost",
+  "capacitor://sdhtskesilyxgmsvvxff.supabase.co",
+  "http://localhost",
+  "https://4300ab76-ad1b-4084-8ca9-03e4344e1aff.lovableproject.com/**",
+  "https://9592663b-8cba-4c8f-a52b-346f26562ba9.lovableproject.com/**",
+  "https://cd8e53c8-1cd0-4f3b-8506-a6e8262920e5.lovableproject.com/**",
+  "https://id-preview--4300ab76-ad1b-4084-8ca9-03e4344e1aff.lovable.app/**",
+  "https://id-preview--9592663b-8cba-4c8f-a52b-346f26562ba9.lovable.app/**",
+  "https://id-preview--cd8e53c8-1cd0-4f3b-8506-a6e8262920e5.lovable.app/**",
+  "https://localhost",
+  "https://open-heart-finder-74.lovable.app/**",
+  "https://open-heart-finder-97.lovable.app/**",
+  "https://open-heart-finder.lovable.app/**",
+  "https://preview--open-heart-finder-74.lovable.app/**",
+  "https://preview--open-heart-finder-97.lovable.app/**",
+  "https://preview--open-heart-finder.lovable.app/**"
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+[auth.mfa]
+max_enrolled_factors = 10
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 6
+otp_expiry = 86400

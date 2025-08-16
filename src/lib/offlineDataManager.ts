@@ -71,6 +71,8 @@ export class OfflineDataManager {
   }
 
   private async checkForMatch(user1Id: string, user2Id: string): Promise<void> {
+    console.log('🔍 Vérification de match entre:', user1Id, 'et', user2Id);
+    
     // Check if the other user also swiped right
     const reciprocalSwipe = await offlineDb.swipes
       .where('swiper_id')
@@ -78,7 +80,10 @@ export class OfflineDataManager {
       .filter(swipe => swipe.swiped_id === user1Id && swipe.is_like === true)
       .first();
 
+    console.log('💕 Like réciproque trouvé:', !!reciprocalSwipe);
+
     if (reciprocalSwipe) {
+      console.log('🎉 CRÉATION DU MATCH !');
       // Create match
       const matchId = uuidv4();
       const now = new Date().toISOString();
@@ -96,6 +101,9 @@ export class OfflineDataManager {
       };
 
       await offlineDb.matches.add(match);
+      console.log('✅ Match créé avec succès');
+    } else {
+      console.log('❌ Pas de like réciproque, pas de match');
     }
   }
 

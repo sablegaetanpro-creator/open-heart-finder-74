@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -130,20 +130,21 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Record purchase in database (temporarily commented out due to types)
+    // Enregistrer l'achat dans la base
     try {
-      // TODO: Uncomment when user_purchases table types are available
-      // const { error } = await supabase
-      //   .from('user_purchases')
-      //   .insert({
-      //     user_id: user?.id,
-      //     feature,
-      //     plan: selectedPlan,
-      //     amount: plans[feature][selectedPlan]?.price,
-      //     status: 'completed'
-      //   });
+      const price = (plans as any)[feature][selectedPlan]?.price || 0;
+      const { error } = await supabase
+        .from('user_purchases')
+        .insert({
+          user_id: user?.id,
+          feature,
+          plan: selectedPlan,
+          amount: price,
+          status: 'completed',
+          payment_method: paymentMethod
+        });
 
-      // if (error) throw error;
+      if (error) throw error;
 
       toast({
         title: "Paiement réussi !",
@@ -186,6 +187,7 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
             {getFeatureIcon()}
             {getFeatureTitle()}
           </DialogTitle>
+          <DialogDescription className="sr-only">Paiement sécurisé pour activer des fonctionnalités premium</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

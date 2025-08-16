@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Profile } from '@/types/database';
 import { toast } from '@/hooks/use-toast';
+import PaymentDialog from '@/components/monetization/PaymentDialog';
 
 interface LikesRevealDialogProps {
   open: boolean;
@@ -24,6 +25,7 @@ const LikesRevealDialog: React.FC<LikesRevealDialogProps> = ({ open, onOpenChang
   const { user } = useAuth();
   const [likers, setLikers] = useState<LikerProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -152,6 +154,7 @@ const LikesRevealDialog: React.FC<LikesRevealDialogProps> = ({ open, onOpenChang
             <Heart className="w-5 h-5 text-primary" />
             <span>Personnes qui vous ont liké</span>
           </DialogTitle>
+          <DialogDescription className="sr-only">Liste des personnes qui ont liké votre profil</DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
@@ -230,13 +233,14 @@ const LikesRevealDialog: React.FC<LikesRevealDialogProps> = ({ open, onOpenChang
               <p className="text-xs text-muted-foreground mb-3">
                 Voyez tous vos likes sans publicité + boostez votre profil !
               </p>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => setShowPayment(true)}>
                 Découvrir Premium
               </Button>
             </div>
           </div>
         )}
       </DialogContent>
+      <PaymentDialog isOpen={showPayment} onClose={() => setShowPayment(false)} feature="premium" />
     </Dialog>
   );
 };

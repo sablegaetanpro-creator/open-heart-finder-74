@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Image, Video, Mic, Phone, VideoIcon, Smile, MoreVertical, ArrowLeft } from 'lucide-react';
+import { Send, Image, Video, Mic, Smile, MoreVertical, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -10,6 +10,40 @@ import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+
+// Compression basique d'images côté client pour éviter les erreurs de taille
+async function compressImage(file: File, maxDimension = 1920, quality = 0.8): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Chargement de l\'image impossible'));
+      img.onload = () => {
+        const { width, height } = img;
+        const scale = Math.min(1, maxDimension / Math.max(width, height));
+        const targetWidth = Math.round(width * scale);
+        const targetHeight = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Contexte canvas indisponible'));
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        canvas.toBlob(
+          blob => {
+            if (!blob) return reject(new Error('Compression impossible'));
+            resolve(blob);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 interface Message {
   id: string;
@@ -30,12 +64,14 @@ interface EnhancedChatInterfaceProps {
     age: number;
   };
   onBack: () => void;
+  onShowProfile?: () => void;
 }
 
 const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   matchId,
   otherUser,
-  onBack
+  onBack,
+  onShowProfile
 }) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -64,6 +100,19 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
   const loadMessages = async () => {
     try {
+      // Conversation spéciale assistant: pas d'appel Supabase
+      if (matchId === 'admin-support') {
+        setMessages([{
+          id: 'welcome',
+          content: "Bonjour ! Je suis l'assistant. Pose-moi tes questions ici.",
+          sender_id: 'assistant',
+          created_at: new Date().toISOString(),
+          is_read: true,
+        } as Message]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -88,6 +137,26 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
     setIsSending(true);
     try {
+      // Mode assistant: pas d'écriture en base, on garde en local
+      if (matchId === 'admin-support') {
+        const localMessage: Message = {
+          id: `temp-${Date.now()}`,
+          content: content.trim() || (type === 'image' ? '📷 Photo' : type === 'video' ? '🎥 Vidéo' : type === 'audio' ? '🎵 Audio' : ''),
+          sender_id: user.id,
+          created_at: new Date().toISOString(),
+          media_type: type === 'text' ? undefined : (type as 'image' | 'video' | 'audio'),
+          media_url: mediaUrl,
+          is_read: true,
+        };
+        setMessages(prev => [...prev, localMessage]);
+        setNewMessage('');
+        toast({
+          title: 'Message envoyé',
+          description: type === 'text' ? 'Votre message a été envoyé (assistant)' : 'Votre média a été envoyé (assistant)'
+        });
+        return;
+      }
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -146,33 +215,31 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        title: "Erreur",
-        description: "L'image est trop volumineuse (max 5MB)",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       setIsSending(true);
-      const fileName = `${matchId}/${user?.id}/${Date.now()}_${file.name}`;
+      // Compresser si l'image est volumineuse (> 6MB) pour rester sous les limites usuelles
+      const shouldCompress = file.size > 6 * 1024 * 1024;
+      const blobToUpload = shouldCompress ? await compressImage(file, 1920, 0.8) : file;
+      const contentType = shouldCompress ? 'image/jpeg' : (file.type || 'image/jpeg');
+      const safeName = shouldCompress
+        ? `${matchId}/${user?.id}/${Date.now()}_${file.name}`.replace(/\.[^.]+$/, '.jpg')
+        : `${matchId}/${user?.id}/${Date.now()}_${file.name}`;
+
       const { data, error } = await supabase.storage
         .from('chat-media')
-        .upload(fileName, file);
+        .upload(safeName, blobToUpload, { contentType });
 
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
         .from('chat-media')
-        .getPublicUrl(fileName);
+        .getPublicUrl(safeName);
 
       await sendMessage('', 'image', publicUrl);
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer l'image",
+        description: `Impossible d'envoyer l'image${error?.message ? `: ${error.message}` : ''}`,
         variant: "destructive"
       });
     } finally {
@@ -193,7 +260,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit
+    if (file.size > 50 * 1024 * 1024) { // 50MB limit (aligné avec plan gratuit)
       toast({
         title: "Erreur",
         description: "La vidéo est trop volumineuse (max 50MB)",
@@ -207,7 +274,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       const fileName = `${matchId}/${user?.id}/${Date.now()}_${file.name}`;
       const { data, error } = await supabase.storage
         .from('chat-media')
-        .upload(fileName, file);
+        .upload(fileName, file, { contentType: file.type || 'video/mp4' });
 
       if (error) throw error;
 
@@ -245,7 +312,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         try {
           const { data, error } = await supabase.storage
             .from('chat-media')
-            .upload(fileName, audioBlob);
+            .upload(fileName, audioBlob, { contentType: 'audio/wav' });
 
           if (error) throw error;
 
@@ -409,26 +476,19 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={otherUser.avatar} alt={otherUser.name} />
-            <AvatarFallback>{otherUser.name[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="font-semibold text-foreground">{otherUser.name}</h3>
-            <p className="text-xs text-muted-foreground">{otherUser.age} ans</p>
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={onShowProfile}>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={otherUser.avatar} alt={otherUser.name} />
+              <AvatarFallback>{otherUser.name[0]}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-semibold text-foreground">{otherUser.name}</h3>
+              <p className="text-xs text-muted-foreground">{otherUser.age} ans</p>
+            </div>
           </div>
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="hover:bg-accent">
-            <Phone className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-accent">
-            <VideoIcon className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="hover:bg-accent">
-            <Smile className="w-5 h-5" />
-          </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="hover:bg-accent">
@@ -455,24 +515,13 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       {/* Messages */}
       <ScrollArea className="flex-1 px-4 py-4">
         <div className="space-y-1">
-          {/* Assistant message */}
-          <div className="flex w-full mb-4 justify-start">
-            <div className="max-w-[70%] rounded-2xl px-4 py-2 shadow-sm bg-muted text-foreground mr-12">
-              <p className="text-sm leading-relaxed">
-                👋 Salut ! Je suis l'assistant de Lovable. Contactez-moi à sable.gaetan.pro@gmail.com pour toute question.
-              </p>
-              <div className="text-xs mt-1 opacity-70 text-left">
-                Maintenant
-              </div>
-            </div>
-          </div>
           {messages.map(renderMessage)}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* Input Area */}
-      <div className="bg-card border-t border-border p-2" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div className="bg-card border-t border-border p-2 pb-2" style={{ paddingBottom: '8px' }}>
         <div className="flex items-end space-x-2">
           {/* Media buttons */}
           <div className="flex space-x-1">

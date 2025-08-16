@@ -62,7 +62,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
   const handleRemoveLike = useCallback(async () => {
     if (isProcessing || !user) return;
     
-    console.log('🔄 Démarrage de la suppression du like pour:', profile.first_name, profile.user_id);
+    // start remove like
     setIsProcessing(true);
     try {
       // Use the new function to properly remove like and associated match
@@ -72,7 +72,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
           p_swiped_id: profile.user_id
         });
 
-      console.log('📊 Résultat de remove_user_like:', { data, error });
+      // result of remove_user_like
 
       if (error) {
         console.error('❌ Erreur SQL:', error);
@@ -80,7 +80,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
       }
 
       if ((data as any)?.success) {
-        console.log('✅ Like supprimé avec succès:', data);
+        // like removed
         
         // Remove from local database immediately
         await (window as any).offlineDb?.swipes
@@ -96,7 +96,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
           ])
           .delete();
 
-        console.log('🗄️ Suppression des données locales terminée');
+        // local data removed
 
         // Trigger data refresh
         window.dispatchEvent(new CustomEvent('refresh-data'));
@@ -111,7 +111,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
         onRemoveLike(profile.user_id);
         onBack();
       } else {
-        console.log('⚠️ Pas de like trouvé à supprimer:', data);
+        // nothing to remove
         toast({
           title: "Information",
           description: (data as any)?.message || "Aucun like trouvé à retirer",

@@ -103,6 +103,35 @@ CREATE TABLE IF NOT EXISTS ad_views (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Tables sociales additionnelles
+-- Table des likes révélés (qui a le droit de voir qui l'a liké)
+CREATE TABLE IF NOT EXISTS likes_revealed (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  liker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  revealed_by TEXT CHECK (revealed_by IN ('ad', 'payment', 'ad_view', 'premium')),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, liker_id)
+);
+
+-- Table des blocages d'utilisateurs
+CREATE TABLE IF NOT EXISTS blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  blocked_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(blocker_id, blocked_id)
+);
+
+-- Table des signalements
+CREATE TABLE IF NOT EXISTS reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  reported_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- =====================================================
 -- 3. ACTIVATION DE LA SÉCURITÉ RLS
 -- =====================================================
@@ -115,6 +144,9 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_purchases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE premium_features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE likes_revealed ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- 4. POLITIQUES RLS
@@ -126,8 +158,10 @@ CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.
 CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Politiques pour swipes
-CREATE POLICY "Users can view own swipes" ON swipes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own swipes" ON swipes FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can view own swipes" ON swipes;
+DROP POLICY IF EXISTS "Users can insert own swipes" ON swipes;
+CREATE POLICY "Users can view swipes involving user" ON swipes FOR SELECT USING (auth.uid() = swiper_id OR auth.uid() = swiped_id);
+CREATE POLICY "Users can insert own swipes" ON swipes FOR INSERT WITH CHECK (auth.uid() = swiper_id);
 
 -- Politiques pour matches
 CREATE POLICY "Users can view own matches" ON matches FOR SELECT USING (auth.uid() = user1_id OR auth.uid() = user2_id);
@@ -164,6 +198,28 @@ CREATE POLICY "Users can update premium features" ON premium_features FOR UPDATE
 -- Politiques pour ad_views
 CREATE POLICY "Users can view own ad views" ON ad_views FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert ad views" ON ad_views FOR INSERT WITH CHECK (true);
+
+-- Politiques pour likes_revealed
+CREATE POLICY "Users can view own revealed likes" ON likes_revealed FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own revealed likes" ON likes_revealed FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Politiques pour blocks
+CREATE POLICY "Users can view own blocks" ON blocks FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY "Users can insert own blocks" ON blocks FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "Users can delete own blocks" ON blocks FOR DELETE USING (auth.uid() = blocker_id);
+
+-- Politiques pour reports
+CREATE POLICY "Users can view own reports" ON reports FOR SELECT USING (auth.uid() = reporter_id);
+CREATE POLICY "Users can insert own reports" ON reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+
+-- Contrainte d'unicité pour les paires de matches (ordre insensible)
+DO $$ BEGIN
+  CREATE UNIQUE INDEX IF NOT EXISTS uniq_matches_pair 
+  ON matches (LEAST(user1_id, user2_id), GREATEST(user1_id, user2_id));
+EXCEPTION WHEN others THEN
+  -- ignorer si la colonne ou l'index existe déjà
+  NULL;
+END $$;
 
 -- =====================================================
 -- 5. FONCTIONS UTILITAIRES

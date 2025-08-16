@@ -26,9 +26,11 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    // Adoucit l'affichage: on ne bascule pas en écran d'erreur si le message est bénin
+    const harmless = /AbortError|NetworkError/i.test(error.message || '');
     return {
-      hasError: true,
-      error,
+      hasError: !harmless,
+      error: harmless ? null : error,
       errorInfo: null,
       isOffline: !navigator.onLine
     };
@@ -36,9 +38,11 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    const harmless = /AbortError|NetworkError/i.test(error.message || '');
     this.setState({
-      error,
-      errorInfo,
+      error: harmless ? null : error,
+      errorInfo: harmless ? null : errorInfo,
+      hasError: harmless ? false : true,
       isOffline: !navigator.onLine
     });
   }

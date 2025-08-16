@@ -74,8 +74,6 @@ const Index = () => {
   };
 
   const handleStartChat = (matchId: string, otherUser?: any) => {
-    console.log('Starting chat with:', matchId);
-    // Pour l'instant, on peut juste naviguer vers les messages
     setActiveTab('messages');
   };
 
@@ -91,7 +89,7 @@ const Index = () => {
           profile={selectedProfile}
           onBack={() => setCurrentView('profile')}
           onRemoveLike={async (profileId) => {
-            console.log('🔄 Suppression du like terminée pour:', profileId);
+            
             
             // Retour à l'onglet découvrir directement
             setActiveTab('discover');
