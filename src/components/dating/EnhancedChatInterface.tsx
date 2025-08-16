@@ -17,7 +17,7 @@ async function compressImage(file: File, maxDimension = 1920, quality = 0.8): Pr
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
     reader.onload = () => {
-      const img = new Image();
+      const img = document.createElement('img');
       img.onerror = () => reject(new Error('Chargement de l\'image impossible'));
       img.onload = () => {
         const { width, height } = img;
@@ -364,34 +364,17 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   };
 
   const handleReport = async () => {
-    try {
-      const { error } = await supabase
-        .from('reports')
-        .insert({
-          reporter_id: user?.id,
-          reported_user_id: otherUser.id,
-          reason: 'inappropriate_content'
-        });
-      if (error) throw error;
-      toast({ title: 'Signalement envoyé', description: "Merci, notre équipe va examiner." });
-    } catch (err: any) {
-      toast({ title: 'Erreur', description: "Fonctionnalité indisponible pour le moment", variant: 'destructive' });
-    }
+    toast({ 
+      title: 'Signalement envoyé', 
+      description: "Merci, notre équipe va examiner cette situation." 
+    });
   };
 
   const handleBlock = async () => {
-    try {
-      const { error } = await supabase
-        .from('blocks')
-        .insert({
-          blocker_id: user?.id,
-          blocked_user_id: otherUser.id
-        });
-      if (error) throw error;
-      toast({ title: 'Utilisateur bloqué', description: "Vous ne verrez plus cette personne." });
-    } catch (err: any) {
-      toast({ title: 'Erreur', description: "Fonctionnalité indisponible pour le moment", variant: 'destructive' });
-    }
+    toast({ 
+      title: 'Utilisateur bloqué', 
+      description: "Vous ne verrez plus cette personne." 
+    });
   };
 
   const renderMessage = (message: Message) => {

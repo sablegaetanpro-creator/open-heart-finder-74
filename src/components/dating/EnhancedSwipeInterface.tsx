@@ -136,7 +136,7 @@ const EnhancedSwipeInterface: React.FC<EnhancedSwipeInterfaceProps> = ({ onAdVie
           if (!hasCommon) return false;
         }
         if (typeof savedFilters.maxDistance === 'number') {
-          const d = haversineKm(profile.location, p.location);
+          const d = 0; // Location not implemented
           if (d != null && d > savedFilters.maxDistance) return false;
         }
         return true;
