@@ -554,7 +554,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
               </div>
             </CardContent>
           </Card>
-          <Card className="text-center">
+          <Card 
+            className="text-center cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => {
+              // Navigation vers l'onglet Messages
+              window.location.hash = '#messages';
+              window.dispatchEvent(new CustomEvent('navigate-to-messages'));
+            }}
+          >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
                 <MessageCircle className="w-6 h-6 text-primary" />

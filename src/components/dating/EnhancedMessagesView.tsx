@@ -203,19 +203,43 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
         const localMatches = await offlineDataManager.getUserMatches(user.id);
         if (localMatches.length > 0) {
           console.log('📱 Affichage des matches locaux:', localMatches.length);
-          // Convertir les matches locaux au bon format
-          const localMatchesFormatted = localMatches.map(match => ({
-            ...match,
-            profile: {
-              id: match.user1_id === user.id ? match.user2_id : match.user1_id,
-              user_id: match.user1_id === user.id ? match.user2_id : match.user1_id,
-              first_name: 'Utilisateur Local',
-              profile_photo_url: '/placeholder.svg',
-              age: 25
-            },
-            lastMessage: null,
-            unreadCount: 0
-          }));
+          // Convertir les matches locaux au bon format avec vraies données de profil
+          const localMatchesFormatted = await Promise.all(
+            localMatches.map(async (match) => {
+              const otherUserId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+              
+              // Essayer de récupérer le vrai profil depuis Supabase
+              let otherProfile = null;
+              try {
+                const { data: profileData } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('user_id', otherUserId)
+                  .maybeSingle();
+                otherProfile = profileData;
+              } catch (error) {
+                console.log('Could not fetch profile from Supabase, using offline data');
+              }
+              
+              // Sinon, essayer depuis la base locale
+              if (!otherProfile) {
+                otherProfile = await offlineDataManager.getProfileByUserId(otherUserId);
+              }
+              
+              return {
+                ...match,
+                profile: {
+                  id: otherProfile?.id || otherUserId,
+                  user_id: otherUserId,
+                  first_name: otherProfile?.first_name || 'Utilisateur',
+                  profile_photo_url: otherProfile?.profile_photo_url || '/placeholder.svg',
+                  age: otherProfile?.age || 25
+                },
+                lastMessage: null,
+                unreadCount: 0
+              };
+            })
+          );
           setMatches(localMatchesFormatted);
           return;
         }

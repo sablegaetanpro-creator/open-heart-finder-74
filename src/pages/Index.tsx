@@ -49,11 +49,19 @@ const Index = () => {
       }
     };
 
+    const handleNavigateToMessages = () => {
+      setActiveTab('messages');
+      setCurrentView('messages');
+    };
+
     window.addEventListener('hashchange', handleRouteChange);
     window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('navigate-to-messages', handleNavigateToMessages);
+    
     return () => {
       window.removeEventListener('hashchange', handleRouteChange);
       window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('navigate-to-messages', handleNavigateToMessages);
     };
   }, []);
 
