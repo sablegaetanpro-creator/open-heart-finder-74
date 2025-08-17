@@ -352,20 +352,8 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
   };
 
   const checkRevealedLikes = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('likes_revealed')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && (error as any).status !== 406 && error.code !== 'PGRST116') throw error;
-      setHasRevealedLikes(!!data);
-    } catch (error) {
-      console.error('Error checking revealed likes:', error);
-    }
+    // Simplifier : permettre toujours de voir les likes
+    setHasRevealedLikes(true);
   };
 
   const handleRevealLikes = () => {
@@ -377,53 +365,21 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
   };
 
   const handleWatchAd = async () => {
-    // Simulate watching an ad
     toast({
-      title: "Publicité regardée !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
+      title: "Fonctionnalité simplifiée",
+      description: "Les likes sont maintenant toujours visibles"
     });
-
-    // Record that user has revealed likes
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'ad'
-        });
-      
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
   };
 
   const handlePayToReveal = async () => {
-    // Simulate payment
     toast({
-      title: "Paiement effectué !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
+      title: "Fonctionnalité simplifiée",
+      description: "Les likes sont maintenant toujours visibles"
     });
-
-    // Record that user has revealed likes
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'payment'
-        });
-      
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
   };
 
   const formatLastMessage = (message: any) => {

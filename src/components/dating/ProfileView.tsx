@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import LikesRevealDialog from './LikesRevealDialog';
 import { offlineDataManager } from '@/lib/offlineDataManager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,7 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import ProfileEditor from './ProfileEditor';
 import ProfileDetailView from './ProfileDetailView';
-import GivenLikesProfileView from './GivenLikesProfileView';
+import SimplifiedProfileView from './SimplifiedProfileView';
 
 interface Like {
   id: string;
@@ -63,9 +62,11 @@ interface ProfileViewProps {
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewGivenLikesProfile }) => {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  // Utiliser la version simplifiée
+  return <SimplifiedProfileView onNavigateToSettings={onNavigateToSettings} />;
+};
+
+export default ProfileView;
   const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [receivedLikes, setReceivedLikes] = useState<Like[]>([]);
   const [givenLikes, setGivenLikes] = useState<Like[]>([]);
@@ -83,7 +84,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
   useEffect(() => {
     if (user) {
       loadData();
-      checkBoostStatus();
     }
   }, [user]);
 
@@ -92,8 +92,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
       loadReceivedLikes(),
       loadGivenLikes(),
       loadMatches(),
-      checkRevealedLikes(),
-      checkBoostStatus()
+      checkRevealedLikes()
     ]);
   };
 
@@ -215,90 +214,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
     }
   };
 
-  const checkBoostStatus = async () => {
-    if (!user) return;
-
-    try {
-      // Using any temporarily until types are updated
-      const { data, error } = await (supabase as any)
-        .from('profile_boosts')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('expires_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (!error && data) {
-        setIsProfileBoosted(true);
-      }
-    } catch (error) {
-      console.error('Error checking boost status:', error);
-    }
-  };
-
+  // Supprimer toutes les fonctionnalités de boost (simplification)
   const handleBoostProfile = () => {
-    setShowBoostDialog(true);
-  };
-
-  const handleWatchAdForBoost = async () => {
     toast({
-      title: "Publicité regardée !",
-      description: "Votre profil est maintenant boosté pour 30 minutes"
+      title: "Fonctionnalité indisponible",
+      description: "Cette fonctionnalité sera bientôt disponible"
     });
-
-    try {
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 30);
-
-      // Using any temporarily until types are updated
-      await (supabase as any)
-        .from('profile_boosts')
-        .insert({
-          user_id: user?.id,
-          boost_type: 'ad',
-          expires_at: expiresAt.toISOString()
-        });
-      
-      setIsProfileBoosted(true);
-      setShowBoostDialog(false);
-      
-      // Recheck boost status after some time
-      setTimeout(() => {
-        checkBoostStatus();
-      }, 30 * 60 * 1000); // 30 minutes
-    } catch (error) {
-      console.error('Error recording boost:', error);
-    }
-  };
-
-  const handlePayForBoost = async () => {
-    toast({
-      title: "Paiement effectué !",
-      description: "Votre profil est maintenant boosté pour 24 heures"
-    });
-
-    try {
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-
-      // Using any temporarily until types are updated
-      await (supabase as any)
-        .from('profile_boosts')
-        .insert({
-          user_id: user?.id,
-          boost_type: 'payment',
-          expires_at: expiresAt.toISOString()
-        });
-      
-      setIsProfileBoosted(true);
-      setShowBoostDialog(false);
-      
-      // Recheck boost status after some time
-      setTimeout(() => {
-        checkBoostStatus();
-      }, 24 * 60 * 60 * 1000); // 24 hours
-    } catch (error) {
-      console.error('Error recording boost:', error);
-    }
   };
 
   const loadMatches = async () => {
@@ -340,80 +261,26 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
   };
 
   const checkRevealedLikes = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('likes_revealed')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
-
-      if (error && (error as any).status !== 406 && error.code !== 'PGRST116') {
-        console.error('Error checking revealed likes:', error);
-        return;
-      }
-
-      setHasRevealedLikes(!!data);
-    } catch (error) {
-      console.error('Error checking revealed likes:', error);
-    }
+    // Simplifier : toujours permettre de voir les likes
+    setHasRevealedLikes(true);
   };
 
   const handleRevealLikes = () => {
-    
-    toast({ title: 'Ouverture…', description: hasRevealedLikes ? 'Affichage des likes reçus' : 'Regarder une pub ou payer pour révéler' });
-    if (hasRevealedLikes) {
-      setShowLikesDialog(true);
-    } else {
-      setShowAdDialog(true);
-    }
+    setShowLikesDialog(true);
   };
 
   const handleWatchAd = async () => {
     toast({
-      title: "Publicité regardée !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
+      title: "Fonctionnalité indisponible",
+      description: "Cette fonctionnalité sera bientôt disponible"
     });
-
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'ad'
-        });
-      
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
   };
 
   const handlePayToReveal = async () => {
     toast({
-      title: "Paiement effectué !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
+      title: "Fonctionnalité indisponible", 
+      description: "Cette fonctionnalité sera bientôt disponible"
     });
-
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'payment'
-        });
-      
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
   };
 
   const handleLikeBack = async (likerId: string) => {

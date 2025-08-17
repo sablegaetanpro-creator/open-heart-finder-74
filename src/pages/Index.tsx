@@ -8,8 +8,6 @@ import ProfileView from '@/components/dating/ProfileView';
 import SettingsPage from '@/components/dating/SettingsPage';
 import ProfileEditPage from '@/pages/ProfileEditPage';
 import BottomNavigation from '@/components/layout/BottomNavigation';
-import InterstitialAd from '@/components/monetization/InterstitialAd';
-import HappnLikesProfileView from '@/components/dating/HappnLikesProfileView';
 import BackButtonHandler from '@/components/dating/BackButtonHandler';
 
 const Index = () => {
@@ -90,35 +88,11 @@ const Index = () => {
   }
 
   const renderActiveView = () => {
-    // Handle profile navigation first
-    if (currentView === 'given-likes-profile') {
-      return selectedProfile ? (
-        <HappnLikesProfileView
-          profile={selectedProfile}
-          onBack={() => setCurrentView('profile')}
-          onRemoveLike={async (profileId) => {
-            
-            
-            // Retour à l'onglet découvrir directement
-            setActiveTab('discover');
-            setCurrentView('discover');
-            
-            // Forcer le rechargement des composants sans reload de page
-            setTimeout(() => {
-              window.location.hash = '#discover';
-              // Trigger a custom event to refresh data
-              window.dispatchEvent(new CustomEvent('refresh-data'));
-            }, 500);
-          }}
-        />
-      ) : null;
-    }
-
     switch (activeTab) {
       case 'discover':
         return (
           <div className="flex-1">
-            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => console.log('Ad view')} />
           </div>
         );
       case 'messages':
@@ -127,10 +101,6 @@ const Index = () => {
         return (
           <ProfileView 
             onNavigateToSettings={() => setActiveTab('settings')}
-            onViewGivenLikesProfile={(profile) => {
-              setSelectedProfile(profile);
-              setCurrentView('given-likes-profile');
-            }}
           />
         );
       case 'settings':
@@ -138,7 +108,7 @@ const Index = () => {
       default:
         return (
           <div className="flex-1">
-            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => console.log('Ad view')} />
           </div>
         );
     }
@@ -150,7 +120,7 @@ const Index = () => {
         {renderActiveView()}
       </main>
       
-      {!currentRoute.includes('/profile-edit') && activeTab !== 'settings' && currentView !== 'given-likes-profile' && (
+      {!currentRoute.includes('/profile-edit') && activeTab !== 'settings' && (
         <BottomNavigation 
           activeTab={activeTab} 
           onTabChange={(tab) => {
@@ -164,21 +134,9 @@ const Index = () => {
       <BackButtonHandler 
         currentView={currentView}
         onBackPress={() => {
-          if (currentView === 'given-likes-profile') {
-            setCurrentView('profile');
-          } else {
-            setCurrentView('discover');
-            setActiveTab('discover');
-          }
+          setCurrentView('discover');
+          setActiveTab('discover');
         }}
-      />
-
-      {/* Interstitial Ad */}
-      <InterstitialAd
-        isOpen={showInterstitialAd}
-        onClose={() => setShowInterstitialAd(false)}
-        type="video"
-        duration={5}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
 import { toast } from '@/hooks/use-toast';
 import EnhancedFilterDialog from './EnhancedFilterDialog';
-import AdBanner from '../monetization/AdBanner';
+// AdBanner removed - simplified version
 import { offlineDataManager } from '@/lib/offlineDataManager';
 import {
   Carousel,
