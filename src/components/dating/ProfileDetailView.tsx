@@ -61,53 +61,39 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
     console.log('🔄 Début de la suppression du match...');
     setIsProcessing(true);
     try {
-      // Utiliser la fonction RPC pour supprimer le like et le match associé
-      const { data, error } = await supabase
-        .rpc('remove_user_like', {
-          p_swiper_id: user.id,
-          p_swiped_id: profile.user_id
-        });
+      // Supprimer directement le swipe de la table
+      const { error } = await supabase
+        .from('swipes')
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', profile.user_id);
 
       if (error) {
         console.error('❌ Erreur SQL:', error);
         throw error;
       }
 
-      if ((data as any)?.success) {
-        console.log('✅ Match supprimé de Supabase');
-        
-        // Forcer une synchronisation complète pour mettre à jour les données locales
-        try {
-          await offlineDataManager.triggerSync();
-          console.log('✅ Synchronisation forcée');
-        } catch (error) {
-          console.error('❌ Erreur synchronisation:', error);
-        }
-
-        // Déclencher le rafraîchissement des données
-        window.dispatchEvent(new CustomEvent('refresh-data'));
-        
-        // Attendre un peu puis forcer un rechargement complet
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('refresh-data'));
-          console.log('🔄 Rechargement forcé des profils');
-        }, 1000);
-        
-        toast({
-          title: "✅ Match supprimé avec succès",
-          description: `${profile.first_name} retournera dans Découvrir`,
-          duration: 4000
-        });
-
-        setShowConfirmDialog(false);
-        onOpenChange(false);
-      } else {
-        toast({
-          title: "Information",
-          description: (data as any)?.message || "Aucun match trouvé à supprimer",
-          duration: 3000
-        });
+      console.log('✅ Like supprimé de Supabase');
+      
+      // Forcer une synchronisation complète pour mettre à jour les données locales
+      try {
+        await offlineDataManager.triggerSync();
+        console.log('✅ Synchronisation forcée');
+      } catch (error) {
+        console.error('❌ Erreur synchronisation:', error);
       }
+
+      // Déclencher le rafraîchissement des données
+      window.dispatchEvent(new CustomEvent('refresh-data'));
+      
+      toast({
+        title: "✅ Like retiré avec succès",
+        description: `${profile.first_name} retournera dans Découvrir`,
+        duration: 4000
+      });
+
+      setShowConfirmDialog(false);
+      onOpenChange(false);
     } catch (error: any) {
       console.error('❌ Erreur lors de la suppression du match:', error);
       toast({

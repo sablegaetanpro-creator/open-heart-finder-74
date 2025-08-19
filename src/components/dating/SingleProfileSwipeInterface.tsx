@@ -380,13 +380,7 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
         </div>
       </div>
 
-      {/* Ad Banner */}
-      {isOnline && (
-        <AdBanner 
-          adUnitId="ca-app-pub-3940256099942544/6300978111" 
-          className="mx-4 mt-2 relative z-10"
-        />
-      )}
+      {/* Publicité désactivée pour simplifier */}
 
       {/* Single Profile Card with Vertical Scroll - Swipeable */}
       <div 
