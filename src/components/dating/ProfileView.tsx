@@ -56,27 +56,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onStart
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
         <div className="px-4 pt-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="profile">Profil</TabsTrigger>
-            <TabsTrigger value="likes-reçus">
-              <div className="flex flex-col items-center">
-                <Heart className="w-4 h-4" />
-                <span className="text-xs">Likes reçus</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="matches">
-              <div className="flex flex-col items-center">
-                <MessageCircle className="w-4 h-4" />
-                <span className="text-xs">Matches</span>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="likes-donnés">
-              <div className="flex flex-col items-center">
-                <Eye className="w-4 h-4" />
-                <span className="text-xs">Likes donnés</span>
-              </div>
-            </TabsTrigger>
-          </TabsList>
+
         </div>
 
         <div className="flex-1 overflow-hidden">
