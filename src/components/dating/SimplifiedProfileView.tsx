@@ -125,22 +125,28 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error for given likes:', error);
+        return;
+      }
 
-      const processedLikes = (data || []).map(like => ({
+      console.log('Given likes raw data:', data);
+
+      const processedLikes = (data || []).filter(like => like.swiped_profile).map(like => ({
         id: like.id,
         swiper_id: like.swiper_id,
         swiped_id: like.swiped_id,
         created_at: like.created_at,
         profile: {
-          id: like.swiped_profile.id,
-          user_id: like.swiped_profile.user_id,
-          first_name: like.swiped_profile.first_name,
-          profile_photo_url: like.swiped_profile.profile_photo_url,
-          age: like.swiped_profile.age
+          id: like.swiped_profile?.id || '',
+          user_id: like.swiped_profile?.user_id || '',
+          first_name: like.swiped_profile?.first_name || 'Utilisateur',
+          profile_photo_url: like.swiped_profile?.profile_photo_url || '',
+          age: like.swiped_profile?.age || 25
         }
       }));
 
+      console.log('Processed given likes:', processedLikes);
       setGivenLikes(processedLikes);
     } catch (error) {
       console.error('Error loading given likes:', error);
