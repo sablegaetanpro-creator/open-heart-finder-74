@@ -48,9 +48,10 @@ interface Match {
 
 interface SimplifiedProfileViewProps {
   onNavigateToSettings?: () => void;
+  onNavigateToTab?: (tab: string) => void;
 }
 
-const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigateToSettings }) => {
+const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigateToSettings, onNavigateToTab }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -320,7 +321,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => toast({ title: "Likes reçus", description: `${receivedLikes.length} personnes vous ont liké` })}
+            onClick={() => onNavigateToTab?.('likes-reçus')}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
@@ -334,10 +335,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
           </Card>
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => {
-              window.location.hash = '#messages';
-              window.dispatchEvent(new CustomEvent('navigate-to-messages'));
-            }}
+            onClick={() => onNavigateToTab?.('matches')}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
@@ -349,7 +347,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
           </Card>
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => toast({ title: "Likes donnés", description: `${givenLikes.length} likes envoyés` })}
+            onClick={() => onNavigateToTab?.('likes-donnés')}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
