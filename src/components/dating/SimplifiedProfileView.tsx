@@ -114,7 +114,17 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
   const loadGivenLikes = async () => {
     if (!user) return;
 
+    console.log('Loading given likes for user:', user.id);
+
     try {
+      // First, let's check if there are any swipes at all
+      const { data: allSwipes, error: allSwipesError } = await supabase
+        .from('swipes')
+        .select('*')
+        .eq('swiper_id', user.id);
+
+      console.log('All user swipes:', allSwipes);
+
       const { data, error } = await supabase
         .from('swipes')
         .select(`
@@ -131,6 +141,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
       }
 
       console.log('Given likes raw data:', data);
+      console.log('Number of given likes found:', data?.length || 0);
 
       const processedLikes = (data || []).filter(like => like.swiped_profile).map(like => ({
         id: like.id,
