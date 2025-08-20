@@ -117,47 +117,66 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
     console.log('Loading given likes for user:', user.id);
 
     try {
-      // First, let's check if there are any swipes at all
-      const { data: allSwipes, error: allSwipesError } = await supabase
+      // Alternative approach: get swipes first, then profiles separately
+      const { data: swipesData, error: swipesError } = await supabase
         .from('swipes')
         .select('*')
-        .eq('swiper_id', user.id);
-
-      console.log('All user swipes:', allSwipes);
-
-      const { data, error } = await supabase
-        .from('swipes')
-        .select(`
-          *,
-          swiped_profile:profiles!swipes_swiped_id_fkey(*)
-        `)
         .eq('swiper_id', user.id)
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error for given likes:', error);
+      if (swipesError) {
+        console.error('Error loading swipes:', swipesError);
         return;
       }
 
-      console.log('Given likes raw data:', data);
-      console.log('Number of given likes found:', data?.length || 0);
+      console.log('Raw swipes data:', swipesData);
 
-      const processedLikes = (data || []).filter(like => like.swiped_profile).map(like => ({
-        id: like.id,
-        swiper_id: like.swiper_id,
-        swiped_id: like.swiped_id,
-        created_at: like.created_at,
-        profile: {
-          id: like.swiped_profile?.id || '',
-          user_id: like.swiped_profile?.user_id || '',
-          first_name: like.swiped_profile?.first_name || 'Utilisateur',
-          profile_photo_url: like.swiped_profile?.profile_photo_url || '',
-          age: like.swiped_profile?.age || 25
-        }
-      }));
+      if (!swipesData || swipesData.length === 0) {
+        console.log('No swipes found');
+        setGivenLikes([]);
+        return;
+      }
 
-      console.log('Processed given likes:', processedLikes);
+      // Get profile IDs that were swiped
+      const profileIds = swipesData.map(swipe => swipe.swiped_id);
+      console.log('Profile IDs to fetch:', profileIds);
+
+      // Try to get profiles - they might be blocked by RLS
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', profileIds);
+
+      console.log('Profiles data:', profilesData);
+      console.log('Profiles error:', profilesError);
+
+      // Create the likes array with whatever profile data we can get
+      const processedLikes = swipesData.map(swipe => {
+        const profile = profilesData?.find(p => p.user_id === swipe.swiped_id);
+        
+        return {
+          id: swipe.id,
+          swiper_id: swipe.swiper_id,
+          swiped_id: swipe.swiped_id,
+          created_at: swipe.created_at,
+          profile: profile ? {
+            id: profile.id,
+            user_id: profile.user_id,
+            first_name: profile.first_name || 'Utilisateur',
+            profile_photo_url: profile.profile_photo_url || '',
+            age: profile.age || 25
+          } : {
+            id: '',
+            user_id: swipe.swiped_id,
+            first_name: 'Utilisateur masqué',
+            profile_photo_url: '',
+            age: 25
+          }
+        };
+      });
+
+      console.log('Final processed likes:', processedLikes);
       setGivenLikes(processedLikes);
     } catch (error) {
       console.error('Error loading given likes:', error);
