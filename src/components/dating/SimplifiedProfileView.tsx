@@ -114,17 +114,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
   const loadGivenLikes = async () => {
     if (!user) return;
 
-    console.log('Loading given likes for user:', user.id);
-
     try {
-      // First, let's check if there are any swipes at all
-      const { data: allSwipes, error: allSwipesError } = await supabase
-        .from('swipes')
-        .select('*')
-        .eq('swiper_id', user.id);
-
-      console.log('All user swipes:', allSwipes);
-
       const { data, error } = await supabase
         .from('swipes')
         .select(`
@@ -135,29 +125,22 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error for given likes:', error);
-        return;
-      }
+      if (error) throw error;
 
-      console.log('Given likes raw data:', data);
-      console.log('Number of given likes found:', data?.length || 0);
-
-      const processedLikes = (data || []).filter(like => like.swiped_profile).map(like => ({
+      const processedLikes = (data || []).map(like => ({
         id: like.id,
         swiper_id: like.swiper_id,
         swiped_id: like.swiped_id,
         created_at: like.created_at,
         profile: {
-          id: like.swiped_profile?.id || '',
-          user_id: like.swiped_profile?.user_id || '',
-          first_name: like.swiped_profile?.first_name || 'Utilisateur',
-          profile_photo_url: like.swiped_profile?.profile_photo_url || '',
-          age: like.swiped_profile?.age || 25
+          id: like.swiped_profile.id,
+          user_id: like.swiped_profile.user_id,
+          first_name: like.swiped_profile.first_name,
+          profile_photo_url: like.swiped_profile.profile_photo_url,
+          age: like.swiped_profile.age
         }
       }));
 
-      console.log('Processed given likes:', processedLikes);
       setGivenLikes(processedLikes);
     } catch (error) {
       console.error('Error loading given likes:', error);
