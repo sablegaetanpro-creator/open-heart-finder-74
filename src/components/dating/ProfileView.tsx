@@ -11,24 +11,20 @@ import ProfileDetailView from './ProfileDetailView';
 import MatchesView from './MatchesView';
 import ReceivedLikesView from './ReceivedLikesView';
 import GivenLikesView from './GivenLikesView';
+
 interface ProfileViewProps {
   onNavigateToSettings?: () => void;
   onStartChat?: (matchId: string) => void;
 }
-const ProfileView: React.FC<ProfileViewProps> = ({
-  onNavigateToSettings,
-  onStartChat
-}) => {
-  const {
-    user
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+
+const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onStartChat }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
   const [showAdDialog, setShowAdDialog] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [showProfileDetail, setShowProfileDetail] = useState(false);
+
   const handleWatchAd = async () => {
     toast({
       title: "Publicité regardée",
@@ -36,27 +32,51 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     });
     setShowAdDialog(false);
   };
+
   const handlePayToReveal = async () => {
     toast({
-      title: "Paiement effectué",
+      title: "Paiement effectué", 
       description: "Merci ! Vous pouvez maintenant voir les likes."
     });
     setShowAdDialog(false);
   };
+
   const handleLikeBack = async (profileUserId: string) => {
     toast({
       title: "Like envoyé",
       description: "Votre like a été envoyé !"
     });
   };
-  return <div className="h-full bg-background">
+
+  return (
+    <div className="h-full bg-background">
       <div className="p-6 border-b">
         <h1 className="text-2xl font-bold text-center">Profil</h1>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
         <div className="px-4 pt-4">
-          
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="profile">Profil</TabsTrigger>
+            <TabsTrigger value="likes-reçus">
+              <div className="flex flex-col items-center">
+                <Heart className="w-4 h-4" />
+                <span className="text-xs">Likes reçus</span>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger value="matches">
+              <div className="flex flex-col items-center">
+                <MessageCircle className="w-4 h-4" />
+                <span className="text-xs">Matches</span>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger value="likes-donnés">
+              <div className="flex flex-col items-center">
+                <Eye className="w-4 h-4" />
+                <span className="text-xs">Likes donnés</span>
+              </div>
+            </TabsTrigger>
+          </TabsList>
         </div>
 
         <div className="flex-1 overflow-hidden">
@@ -102,7 +122,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       </Dialog>
 
       {/* Profile Detail View */}
-      <ProfileDetailView profile={selectedProfile} open={showProfileDetail} onOpenChange={setShowProfileDetail} onLike={handleLikeBack} showLikeButton={true} />
-    </div>;
+      <ProfileDetailView
+        profile={selectedProfile}
+        open={showProfileDetail}
+        onOpenChange={setShowProfileDetail}
+        onLike={handleLikeBack}
+        showLikeButton={true}
+      />
+    </div>
+  );
 };
+
 export default ProfileView;
