@@ -130,21 +130,25 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
     // Simulate payment processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
+    // Désactiver pour l'instant - table user_purchases n'existe pas
     // Enregistrer l'achat dans la base
-    try {
-      const price = (plans as any)[feature][selectedPlan]?.price || 0;
-      const { error } = await supabase
-        .from('user_purchases')
-        .insert({
-          user_id: user?.id,
-          feature,
-          plan: selectedPlan,
-          amount: price,
-          status: 'completed',
-          payment_method: paymentMethod
-        });
+    // try {
+    //   const price = (plans as any)[feature][selectedPlan]?.price || 0;
+    //   const { error } = await supabase
+    //     .from('user_purchases')
+    //     .insert({
+    //       user_id: user?.id,
+    //       feature,
+    //       plan: selectedPlan,
+    //       amount: price,
+    //       status: 'completed',
+    //       payment_method: paymentMethod
+    //     });
 
-      if (error) throw error;
+    //   if (error) throw error;
+    // } catch (error) {
+    //   console.error('Error saving purchase:', error);
+    // }
 
       toast({
         title: "Paiement réussi !",
@@ -153,10 +157,6 @@ const PaymentDialog: React.FC<PaymentDialogProps> = ({
 
       if (onSuccess) onSuccess();
       onClose();
-
-    } catch (error) {
-      console.error('Error recording purchase:', error);
-    }
   };
 
   const getFeatureIcon = () => {

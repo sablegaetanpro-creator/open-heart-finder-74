@@ -65,12 +65,12 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
     // start remove like
     setIsProcessing(true);
     try {
-      // Use the new function to properly remove like and associated match
-      const { data, error } = await supabase
-        .rpc('remove_user_like', {
-          p_swiper_id: user.id,
-          p_swiped_id: profile.user_id
-        });
+      // Suppression directe du swipe
+      const { error } = await supabase
+        .from('swipes')
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', profile.user_id);
 
       // result of remove_user_like
 
@@ -79,45 +79,16 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
         throw error;
       }
 
-      if ((data as any)?.success) {
-        // like removed
-        
-        // Remove from local database immediately
-        await (window as any).offlineDb?.swipes
-          ?.where('swiper_id').equals(user.id)
-          .and((swipe: any) => swipe.swiped_id === profile.user_id && swipe.is_like === true)
-          .delete();
+      // Suppression réussie
+      toast({
+        title: "✅ Like retiré avec succès",
+        description: `${profile.first_name} retournera dans Découvrir`,
+        duration: 4000
+      });
 
-        // Also remove any associated matches from local database
-        await (window as any).offlineDb?.matches
-          ?.where(['user1_id', 'user2_id']).anyOf([
-            [user.id, profile.user_id],
-            [profile.user_id, user.id]
-          ])
-          .delete();
-
-        // local data removed
-
-        // Trigger data refresh
-        window.dispatchEvent(new CustomEvent('refresh-data'));
-        
-        toast({
-          title: "✅ Like retiré avec succès",
-          description: `${profile.first_name} retournera dans Découvrir`,
-          duration: 4000
-        });
-
-        // Call the callback to handle navigation and refresh
-        onRemoveLike(profile.user_id);
-        onBack();
-      } else {
-        // nothing to remove
-        toast({
-          title: "Information",
-          description: (data as any)?.message || "Aucun like trouvé à retirer",
-          duration: 3000
-        });
-      }
+      // Call the callback to handle navigation and refresh
+      onRemoveLike(profile.user_id);
+      onBack();
     } catch (error: any) {
       console.error('❌ Erreur lors de la suppression du like:', error);
       toast({

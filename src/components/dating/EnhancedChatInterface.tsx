@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Image, Video, Mic, Smile, MoreVertical, ArrowLeft } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Image, Video, Mic, Smile, MoreVertical, ArrowLeft, X, Play, Pause, FileImage, FileVideo, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -79,11 +79,16 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [previewMedia, setPreviewMedia] = useState<{type: 'image' | 'video', url: string, file: File} | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dragCounterRef = useRef(0);
 
   useEffect(() => {
     loadMessages();
@@ -93,6 +98,27 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Timer pour l'enregistrement audio
+  useEffect(() => {
+    if (isRecording) {
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      setRecordingDuration(0);
+    }
+
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+    };
+  }, [isRecording]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -120,7 +146,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      setMessages((data as Message[]) || []);
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -171,7 +197,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       if (error) throw error;
 
-      setMessages(prev => [...prev, data]);
+      setMessages(prev => [...prev, data as Message]);
       setNewMessage('');
       
       toast({
@@ -215,36 +241,9 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
-    try {
-      setIsSending(true);
-      // Compresser si l'image est volumineuse (> 6MB) pour rester sous les limites usuelles
-      const shouldCompress = file.size > 6 * 1024 * 1024;
-      const blobToUpload = shouldCompress ? await compressImage(file, 1920, 0.8) : file;
-      const contentType = shouldCompress ? 'image/jpeg' : (file.type || 'image/jpeg');
-      const safeName = shouldCompress
-        ? `${matchId}/${user?.id}/${Date.now()}_${file.name}`.replace(/\.[^.]+$/, '.jpg')
-        : `${matchId}/${user?.id}/${Date.now()}_${file.name}`;
-
-      const { data, error } = await supabase.storage
-        .from('chat-media')
-        .upload(safeName, blobToUpload, { contentType });
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('chat-media')
-        .getPublicUrl(safeName);
-
-      await sendMessage('', 'image', publicUrl);
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: `Impossible d'envoyer l'image${error?.message ? `: ${error.message}` : ''}`,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSending(false);
-    }
+    // Créer prévisualisation
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewMedia({ type: 'image', url: previewUrl, file });
   };
 
   const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,7 +259,7 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit (aligné avec plan gratuit)
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         title: "Erreur",
         description: "La vidéo est trop volumineuse (max 50MB)",
@@ -269,29 +268,126 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       return;
     }
 
+    // Créer prévisualisation
+    const previewUrl = URL.createObjectURL(file);
+    setPreviewMedia({ type: 'video', url: previewUrl, file });
+  };
+
+  const confirmMediaUpload = async () => {
+    if (!previewMedia || !user) return;
+
     try {
       setIsSending(true);
-      const fileName = `${matchId}/${user?.id}/${Date.now()}_${file.name}`;
+      setUploadProgress(0);
+
+      let blobToUpload: Blob | File = previewMedia.file;
+      let contentType = previewMedia.file.type;
+      let fileName = `${matchId}/${user.id}/${Date.now()}_${previewMedia.file.name}`;
+
+      // Compression pour les images volumineuses
+      if (previewMedia.type === 'image' && previewMedia.file.size > 6 * 1024 * 1024) {
+        setUploadProgress(25);
+        blobToUpload = await compressImage(previewMedia.file, 1920, 0.8);
+        contentType = 'image/jpeg';
+        fileName = fileName.replace(/\.[^.]+$/, '.jpg');
+      }
+
+      setUploadProgress(50);
+
       const { data, error } = await supabase.storage
         .from('chat-media')
-        .upload(fileName, file, { contentType: file.type || 'video/mp4' });
+        .upload(fileName, blobToUpload, { contentType });
 
       if (error) throw error;
+
+      setUploadProgress(75);
 
       const { data: { publicUrl } } = supabase.storage
         .from('chat-media')
         .getPublicUrl(fileName);
 
-      await sendMessage('', 'video', publicUrl);
+      setUploadProgress(100);
+      await sendMessage('', previewMedia.type, publicUrl);
+      
+      // Nettoyage
+      URL.revokeObjectURL(previewMedia.url);
+      setPreviewMedia(null);
+      setUploadProgress(0);
     } catch (error: any) {
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer la vidéo",
+        description: `Impossible d'envoyer le ${previewMedia.type === 'image' ? 'image' : 'vidéo'}${error?.message ? `: ${error.message}` : ''}`,
         variant: "destructive"
       });
+      setUploadProgress(0);
     } finally {
       setIsSending(false);
     }
+  };
+
+  const cancelMediaUpload = () => {
+    if (previewMedia) {
+      URL.revokeObjectURL(previewMedia.url);
+      setPreviewMedia(null);
+    }
+    setUploadProgress(0);
+  };
+
+  // Drag & Drop functionality
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files);
+    const file = files[0];
+    
+    if (!file) return;
+
+    if (file.type.startsWith('image/')) {
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewMedia({ type: 'image', url: previewUrl, file });
+    } else if (file.type.startsWith('video/')) {
+      if (file.size > 50 * 1024 * 1024) {
+        toast({
+          title: "Erreur",
+          description: "La vidéo est trop volumineuse (max 50MB)",
+          variant: "destructive"
+        });
+        return;
+      }
+      const previewUrl = URL.createObjectURL(file);
+      setPreviewMedia({ type: 'video', url: previewUrl, file });
+    } else {
+      toast({
+        title: "Format non supporté",
+        description: "Seules les images et vidéos sont acceptées",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const startRecording = async () => {
@@ -336,8 +432,8 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
       setIsRecording(true);
       
       toast({
-        title: "Enregistrement",
-        description: "Enregistrement audio en cours..."
+        title: "Enregistrement audio",
+        description: "Maintenez appuyé pour enregistrer"
       });
     } catch (error: any) {
       toast({
@@ -452,7 +548,65 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div 
+      className="flex flex-col h-full bg-background"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Media Preview Modal */}
+      {previewMedia && (
+        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-lg max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-semibold">Prévisualisation</h3>
+              <Button variant="ghost" size="icon" onClick={cancelMediaUpload}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              {previewMedia.type === 'image' ? (
+                <img 
+                  src={previewMedia.url} 
+                  alt="Prévisualisation" 
+                  className="w-full h-auto max-h-64 object-contain rounded-lg"
+                />
+              ) : (
+                <video 
+                  src={previewMedia.url} 
+                  controls 
+                  className="w-full h-auto max-h-64 rounded-lg"
+                />
+              )}
+              {uploadProgress > 0 && (
+                <div className="mt-4">
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all" 
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Envoi en cours... {uploadProgress}%</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-border flex gap-2">
+              <Button variant="outline" onClick={cancelMediaUpload} className="flex-1">
+                Annuler
+              </Button>
+              <Button 
+                onClick={confirmMediaUpload} 
+                disabled={isSending}
+                className="flex-1 bg-gradient-love hover:opacity-90"
+              >
+                {isSending ? "Envoi..." : "Envoyer"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -505,15 +659,32 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       {/* Input Area */}
       <div className="bg-card border-t border-border p-2 pb-2" style={{ paddingBottom: '8px' }}>
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="mb-2 px-3 py-2 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">Enregistrement...</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-red-600" />
+              <span className="text-sm font-mono text-red-700 dark:text-red-300">
+                {formatRecordingTime(recordingDuration)}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-end space-x-2">
           {/* Media buttons */}
           <div className="flex space-x-1">
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isSending}
+              disabled={isSending || isRecording}
+              title="Envoyer une image"
             >
               <Image className="w-5 h-5" />
             </Button>
@@ -521,9 +692,10 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent"
               onClick={() => videoInputRef.current?.click()}
-              disabled={isSending}
+              disabled={isSending || isRecording}
+              title="Envoyer une vidéo"
             >
               <Video className="w-5 h-5" />
             </Button>
@@ -532,14 +704,15 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
               variant="ghost"
               size="icon"
               className={cn(
-                "text-muted-foreground hover:text-foreground",
-                isRecording && "text-red-500 bg-red-100"
+                "text-muted-foreground hover:text-foreground hover:bg-accent",
+                isRecording && "text-red-500 bg-red-100 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
               )}
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
               disabled={isSending}
+              title="Maintenir pour enregistrer un audio"
             >
               <Mic className="w-5 h-5" />
             </Button>
@@ -568,13 +741,32 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
           {/* Send button */}
           <Button
             onClick={handleSendText}
-            disabled={!newMessage.trim() || isSending}
+            disabled={!newMessage.trim() || isSending || isRecording}
             size="icon"
-            className="bg-gradient-love hover:opacity-90"
+            className={cn(
+              "bg-gradient-love hover:opacity-90 transition-all",
+              isSending && "opacity-50"
+            )}
+            title="Envoyer le message"
           >
-            <Send className="w-4 h-4" />
+            {isSending ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
           </Button>
         </div>
+
+        {/* Zone de drop pour les fichiers */}
+        {dragCounterRef.current > 0 && (
+          <div className="absolute inset-4 border-2 border-dashed border-primary rounded-lg bg-primary/5 flex items-center justify-center z-10">
+            <div className="text-center">
+              <FileImage className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium text-primary">Relâchez pour envoyer</p>
+              <p className="text-xs text-muted-foreground">Images et vidéos acceptées</p>
+            </div>
+          </div>
+        )}
 
         {/* Hidden file inputs */}
         <input

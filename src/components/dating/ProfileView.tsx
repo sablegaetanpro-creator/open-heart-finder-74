@@ -342,22 +342,24 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
   const checkRevealedLikes = async () => {
     if (!user) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('likes_revealed')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle(); // Utiliser maybeSingle() au lieu de single()
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   const { data, error } = await supabase
+    //     .from('likes_revealed')
+    //     .select('*')
+    //     .eq('user_id', user.id)
+    //     .maybeSingle();
 
-      if (error && (error as any).status !== 406 && error.code !== 'PGRST116') {
-        console.error('Error checking revealed likes:', error);
-        return;
-      }
+    //   if (error && (error as any).status !== 406 && error.code !== 'PGRST116') {
+    //     console.error('Error checking revealed likes:', error);
+    //     return;
+    //   }
 
-      setHasRevealedLikes(!!data);
-    } catch (error) {
-      console.error('Error checking revealed likes:', error);
-    }
+    //   setHasRevealedLikes(!!data);
+    // } catch (error) {
+    //   console.error('Error checking revealed likes:', error);
+    // }
+    setHasRevealedLikes(false);
   };
 
   const handleRevealLikes = () => {
@@ -376,21 +378,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
       description: "Vous pouvez maintenant voir qui vous a liké"
     });
 
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'ad'
-        });
-      
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   await supabase
+    //     .from('likes_revealed')
+    //     .insert({
+    //       user_id: user?.id,
+    //       liker_id: receivedLikes[0]?.swiper_id || 'unknown',
+    //       revealed_by: 'ad'
+    //     });
+    // } catch (error) {
+    //   console.error('Error recording revealed likes:', error);
+    // }
+    
+    setHasRevealedLikes(true);
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
+  };
   };
 
   const handlePayToReveal = async () => {
@@ -399,21 +403,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewG
       description: "Vous pouvez maintenant voir qui vous a liké"
     });
 
-    try {
-      await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user?.id,
-          liker_id: receivedLikes[0]?.swiper_id || 'unknown',
-          revealed_by: 'payment'
-        });
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   await supabase
+    //     .from('likes_revealed')
+    //     .insert({
+    //       user_id: user?.id,
+    //       liker_id: receivedLikes[0]?.swiper_id || 'unknown',
+    //       revealed_by: 'payment'
+    //     });
+    // } catch (error) {
+    //   console.error('Error recording revealed likes:', error);
+    // }
       
-      setHasRevealedLikes(true);
-      setShowAdDialog(false);
-      setShowLikesDialog(true);
-    } catch (error) {
-      console.error('Error recording revealed likes:', error);
-    }
+    setHasRevealedLikes(true);
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
   };
 
   const handleLikeBack = async (likerId: string) => {

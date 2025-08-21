@@ -69,39 +69,31 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
     try {
       console.log('🔄 Démarrage de la suppression du like pour:', profile.first_name, profile.user_id);
       
-      // Use the new function to properly remove like and associated match
-      const { data, error } = await supabase
-        .rpc('remove_user_like', {
-          p_swiper_id: user.id,
-          p_swiped_id: profile.user_id
-        });
+      // Suppression directe du swipe
+      const { error } = await supabase
+        .from('swipes') 
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', profile.user_id);
 
-      console.log('📊 Résultat de remove_user_like:', { data, error });
+      console.log('📊 Résultat de la suppression:', { error });
 
       if (error) {
         console.error('❌ Erreur SQL:', error);
         throw error;
       }
 
-      if ((data as any)?.success) {
-        console.log('✅ Like supprimé avec succès:', data);
-        toast({
-          title: "✅ Like retiré avec succès",
-          description: `${profile.first_name} retournera dans Découvrir`,
-          duration: 4000
-        });
+      // Suppression réussie
+      console.log('✅ Like supprimé avec succès');
+      toast({
+        title: "✅ Like retiré avec succès", 
+        description: `${profile.first_name} retournera dans Découvrir`,
+        duration: 4000
+      });
 
-        // Call the callback to handle navigation and refresh
-        onRemoveLike(profile.user_id);
-        onBack();
-      } else {
-        console.log('⚠️ Pas de like trouvé à supprimer:', data);
-        toast({
-          title: "Information",
-          description: (data as any)?.message || "Aucun like trouvé à retirer",
-          duration: 3000
-        });
-      }
+      // Call the callback to handle navigation and refresh
+      onRemoveLike(profile.user_id);
+      onBack();
     } catch (error: any) {
       console.error('❌ Erreur lors de la suppression du like:', error);
       toast({

@@ -49,15 +49,16 @@ const LikesRevealDialog: React.FC<LikesRevealDialogProps> = ({ open, onOpenChang
 
       if (likesError) throw likesError;
 
+      // Désactiver pour l'instant - table likes_revealed n'existe pas
       // Get revealed likes
-      const { data: revealedData, error: revealedError } = await supabase
-        .from('likes_revealed')
-        .select('liker_id')
-        .eq('user_id', user.id);
+      // const { data: revealedData, error: revealedError } = await supabase
+      //   .from('likes_revealed')
+      //   .select('liker_id')
+      //   .eq('user_id', user.id);
 
-      if (revealedError) throw revealedError;
+      // if (revealedError) throw revealedError;
 
-      const revealedIds = revealedData?.map(r => r.liker_id) || [];
+      const revealedIds: string[] = []; // revealedData?.map(r => r.liker_id) || [];
 
       const likersWithRevealStatus: LikerProfile[] = (likesData || []).map(like => ({
         ...like.profiles as Profile,
@@ -83,16 +84,17 @@ const LikesRevealDialog: React.FC<LikesRevealDialogProps> = ({ open, onOpenChang
       // Simulate watching an ad (in real app, integrate with AdMob)
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Désactiver pour l'instant - table likes_revealed n'existe pas
       // Record the reveal
-      const { error } = await supabase
-        .from('likes_revealed')
-        .insert({
-          user_id: user.id,
-          liker_id: likerId,
-          revealed_by: 'ad_view'
-        });
+      // const { error } = await supabase
+      //   .from('likes_revealed')
+      //   .insert({
+      //     user_id: user.id,
+      //     liker_id: likerId,
+      //     revealed_by: 'ad_view'
+      //   });
 
-      if (error) throw error;
+      // if (error) throw error;
 
       // Update local state
       setLikers(prev => prev.map(liker => 
