@@ -48,10 +48,9 @@ interface Match {
 
 interface SimplifiedProfileViewProps {
   onNavigateToSettings?: () => void;
-  onNavigateToTab?: (tab: string) => void;
 }
 
-const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigateToSettings, onNavigateToTab }) => {
+const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigateToSettings }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [showProfileEditor, setShowProfileEditor] = useState(false);
@@ -321,7 +320,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onNavigateToTab?.('likes-reçus')}
+            onClick={() => toast({ title: "Likes reçus", description: `${receivedLikes.length} personnes vous ont liké` })}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
@@ -335,7 +334,10 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
           </Card>
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onNavigateToTab?.('matches')}
+            onClick={() => {
+              window.location.hash = '#messages';
+              window.dispatchEvent(new CustomEvent('navigate-to-messages'));
+            }}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">
@@ -347,7 +349,7 @@ const SimplifiedProfileView: React.FC<SimplifiedProfileViewProps> = ({ onNavigat
           </Card>
           <Card 
             className="text-center cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onNavigateToTab?.('likes-donnés')}
+            onClick={() => toast({ title: "Likes donnés", description: `${givenLikes.length} likes envoyés` })}
           >
             <CardContent className="p-4">
               <div className="flex flex-col items-center space-y-2">

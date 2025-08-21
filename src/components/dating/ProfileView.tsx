@@ -61,10 +61,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
         <div className="flex-1 overflow-hidden">
           <TabsContent value="profile" className="mt-0 h-full">
-            <SimplifiedProfileView 
-              onNavigateToSettings={onNavigateToSettings} 
-              onNavigateToTab={setActiveTab}
-            />
+            <SimplifiedProfileView onNavigateToSettings={onNavigateToSettings} />
           </TabsContent>
 
           <TabsContent value="likes-reçus" className="mt-0 h-full">
