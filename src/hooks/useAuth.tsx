@@ -189,20 +189,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('Not authenticated') };
 
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', user.id);
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('user_id', user.id);
 
-      if (!error && profile) {
-        setProfile({ ...profile, ...updates });
-      }
-
-      return { error };
-    } catch (error) {
-      return { error };
+    if (!error && profile) {
+      setProfile({ ...profile, ...updates });
     }
+
+    return { error };
   };
 
   return (

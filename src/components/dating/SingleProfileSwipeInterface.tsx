@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useOffline } from '@/hooks/useOffline';
 import { toast } from '@/hooks/use-toast';
 import EnhancedFilterDialog from './EnhancedFilterDialog';
-// AdBanner removed - simplified version
+import AdBanner from '../monetization/AdBanner';
 import { offlineDataManager } from '@/lib/offlineDataManager';
 import {
   Carousel,
@@ -380,11 +380,12 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
         </div>
       </div>
 
-      {/* Simple ad placeholder */}
+      {/* Ad Banner */}
       {isOnline && (
-        <div className="mx-4 mt-2 relative z-10 bg-muted rounded-lg p-4 text-center">
-          <p className="text-sm text-muted-foreground">Publicité</p>
-        </div>
+        <AdBanner 
+          adUnitId="ca-app-pub-3940256099942544/6300978111" 
+          className="mx-4 mt-2 relative z-10"
+        />
       )}
 
       {/* Single Profile Card with Vertical Scroll - Swipeable */}
