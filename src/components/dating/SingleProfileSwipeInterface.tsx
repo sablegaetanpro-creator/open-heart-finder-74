@@ -380,12 +380,11 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
         </div>
       </div>
 
-      {/* Ad Banner */}
+      {/* Simple ad placeholder */}
       {isOnline && (
-        <AdBanner 
-          adUnitId="ca-app-pub-3940256099942544/6300978111" 
-          className="mx-4 mt-2 relative z-10"
-        />
+        <div className="mx-4 mt-2 relative z-10 bg-muted rounded-lg p-4 text-center">
+          <p className="text-sm text-muted-foreground">Publicité</p>
+        </div>
       )}
 
       {/* Single Profile Card with Vertical Scroll - Swipeable */}

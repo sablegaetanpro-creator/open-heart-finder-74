@@ -120,7 +120,10 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      setMessages(data?.map(msg => ({
+        ...msg,
+        media_type: msg.media_type as 'image' | 'video' | 'audio' | undefined
+      })) || []);
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -171,7 +174,10 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
 
       if (error) throw error;
 
-      setMessages(prev => [...prev, data]);
+      setMessages(prev => [...prev, {
+        ...data,
+        media_type: data.media_type as 'image' | 'video' | 'audio' | undefined
+      }]);
       setNewMessage('');
       
       toast({
