@@ -48,7 +48,7 @@ interface Match {
   user1_id: string;
   user2_id: string;
   created_at: string;
-  profile?: {
+  profile: {
     id: string;
     user_id: string;
     first_name: string;
@@ -57,288 +57,392 @@ interface Match {
   };
 }
 
-interface Profile {
-  id: string;
-  user_id: string;
-  first_name: string;
-  age: number;
-  profile_photo_url: string;
-  additional_photos?: string[];
-  bio?: string;
-  profession?: string;
-  interests?: string[];
-  height?: number;
-  education?: string;
-  exercise_frequency?: string;
-  children?: string;
-  animals?: string;
-  smoker?: boolean;
-  drinks?: string;
+interface ProfileViewProps {
+  onNavigateToSettings?: () => void;
+  onViewGivenLikesProfile?: (profile: any) => void;
 }
 
-const ProfileView: React.FC = () => {
+const ProfileView: React.FC<ProfileViewProps> = ({ onNavigateToSettings, onViewGivenLikesProfile }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [givenLikes, setGivenLikes] = useState<Like[]>([]);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [receivedLikes, setReceivedLikes] = useState<Like[]>([]);
+  const [givenLikes, setGivenLikes] = useState<Like[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loadingGivenLikes, setLoadingGivenLikes] = useState(true);
-  const [loadingReceivedLikes, setLoadingReceivedLikes] = useState(true);
-  const [loadingMatches, setLoadingMatches] = useState(true);
-  const [showGivenLikesProfile, setShowGivenLikesProfile] = useState<Profile | null>(null);
+  const [showLikesDialog, setShowLikesDialog] = useState(false);
+  const [showGivenLikesDialog, setShowGivenLikesDialog] = useState(false);
+  const [showAdDialog, setShowAdDialog] = useState(false);
+  const [hasRevealedLikes, setHasRevealedLikes] = useState(false);
+  const [showBoostDialog, setShowBoostDialog] = useState(false);
+  const [isProfileBoosted, setIsProfileBoosted] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [showProfileDetail, setShowProfileDetail] = useState(false);
-  const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
-  const [showRevealDialog, setShowRevealDialog] = useState(false);
-  const [revealedLikesCount, setRevealedLikesCount] = useState(0);
+  const [showGivenLikesProfile, setShowGivenLikesProfile] = useState(false);
 
-  const loadGivenLikes = useCallback(async () => {
+  useEffect(() => {
+    if (user) {
+      loadData();
+      checkBoostStatus();
+    }
+  }, [user]);
+
+  const loadData = async () => {
+    await Promise.all([
+      loadReceivedLikes(),
+      loadGivenLikes(),
+      loadMatches(),
+      checkRevealedLikes(),
+      checkBoostStatus()
+    ]);
+  };
+
+  const loadReceivedLikes = async () => {
     if (!user) return;
-    
-    setLoadingGivenLikes(true);
-    console.log('🚀 Starting loadGivenLikes for user:', user.id);
-    
+
     try {
-      // Fetch from Supabase with proper join
+      // First try to get received likes from Supabase
       const { data, error } = await supabase
         .from('swipes')
         .select(`
-          id,
-          swiper_id,
-          swiped_id,
-          created_at,
-          profiles!swipes_swiped_id_fkey(
-            id,
-            user_id,
-            first_name,
-            profile_photo_url,
-            age,
-            bio,
-            profession,
-            interests,
-            height,
-            education,
-            exercise_frequency,
-            children,
-            animals,
-            smoker,
-            drinks,
-            additional_photos
-          )
+          *,
+          swiper_profile:profiles!swipes_swiper_id_fkey(*)
+        `)
+        .eq('swiped_id', user.id)
+        .eq('is_like', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase error for received likes:', error);
+        return;
+      }
+
+      const processedLikes = (data || []).map(like => ({
+        id: like.id,
+        swiper_id: like.swiper_id,
+        swiped_id: like.swiped_id,
+        created_at: like.created_at,
+        profile: {
+          id: like.swiper_profile?.id || '',
+          user_id: like.swiper_profile?.user_id || '',
+          first_name: like.swiper_profile?.first_name || 'Utilisateur',
+          profile_photo_url: like.swiper_profile?.profile_photo_url || '',
+          age: like.swiper_profile?.age || 25,
+          bio: like.swiper_profile?.bio || ''
+        }
+      }));
+
+      setReceivedLikes(processedLikes);
+      
+      // Pour débogage: afficher le nombre de likes reçus
+      
+      
+    } catch (error) {
+      console.error('Error loading received likes:', error);
+    }
+  };
+
+  const loadGivenLikes = async () => {
+    if (!user) return;
+
+    try {
+      // First try to get likes from offline data
+      const offlineLikes = await offlineDataManager.getUserLikes(user.id);
+      
+      if (offlineLikes.length > 0) {
+        // Get profile data for the offline likes
+        const likesWithProfiles = await Promise.all(
+          offlineLikes.map(async (like) => {
+            const profile = await offlineDataManager.getProfileByUserId(like.swiped_id);
+            if (profile) {
+              return {
+                id: like.id,
+                swiper_id: like.swiper_id,
+                swiped_id: like.swiped_id,
+                created_at: like.created_at,
+                profile: {
+                  id: profile.id,
+                  user_id: profile.user_id,
+                  first_name: profile.first_name,
+                  profile_photo_url: profile.profile_photo_url,
+                  age: profile.age,
+                  bio: profile.bio
+                }
+              };
+            }
+            return null;
+          })
+        );
+        
+        const validLikes = likesWithProfiles.filter(like => like !== null);
+        setGivenLikes(validLikes);
+        
+        // If we have offline data, return early
+        if (validLikes.length > 0) return;
+      }
+
+      // Fallback to Supabase if no offline data
+      const { data, error } = await supabase
+        .from('swipes')
+        .select(`
+          *,
+          swiped_profile:profiles!swipes_swiped_id_fkey(*)
         `)
         .eq('swiper_id', user.id)
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Supabase response:', { data, error });
-
-      if (error) {
-        console.error('❌ Error loading given likes:', error);
-        throw error;
-      }
-
-      const likesWithProfiles = data?.map(like => ({
-        ...like,
-        profile: Array.isArray(like.profiles) ? like.profiles[0] : like.profiles
-      })).filter(like => like.profile) || [];
-
-      console.log('✅ Given likes loaded successfully:', likesWithProfiles.length);
-      setGivenLikes(likesWithProfiles);
-      
-    } catch (error: any) {
-      console.error('❌ Error in loadGivenLikes:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les likes envoyés",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingGivenLikes(false);
-    }
-  }, [user, toast]);
-
-  const loadReceivedLikes = useCallback(async () => {
-    if (!user) return;
-    
-    setLoadingReceivedLikes(true);
-    try {
-      const { data, error } = await supabase
-        .from('swipes')
-        .select(`
-          id,
-          swiper_id,
-          swiped_id,
-          created_at,
-          profiles!swipes_swiper_id_fkey(
-            id,
-            user_id,
-            first_name,
-            profile_photo_url,
-            age,
-            bio
-          )
-        `)
-        .eq('swiped_id', user.id)
-        .eq('is_like', true)
-        .order('created_at', { ascending: false });
-
       if (error) throw error;
-      
-      const likesWithProfiles = data?.map(like => ({
-        ...like,
-        profile: Array.isArray(like.profiles) ? like.profiles[0] : like.profiles
-      })).filter(like => like.profile) || [];
 
-      setReceivedLikes(likesWithProfiles);
-    } catch (error: any) {
-      console.error('Error loading received likes:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les likes reçus",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingReceivedLikes(false);
+      const processedLikes = (data || []).map(like => ({
+        id: like.id,
+        swiper_id: like.swiper_id,
+        swiped_id: like.swiped_id,
+        created_at: like.created_at,
+        profile: {
+          id: like.swiped_profile.id,
+          user_id: like.swiped_profile.user_id,
+          first_name: like.swiped_profile.first_name,
+          profile_photo_url: like.swiped_profile.profile_photo_url,
+          age: like.swiped_profile.age,
+          bio: like.swiped_profile.bio
+        }
+      }));
+
+      setGivenLikes(processedLikes);
+    } catch (error) {
+      console.error('Error loading given likes:', error);
     }
-  }, [user, toast]);
+  };
 
-  const loadMatches = useCallback(async () => {
+  const checkBoostStatus = async () => {
     if (!user) return;
-    
-    setLoadingMatches(true);
+
     try {
-      // Simple query for matches without join for now
-      const { data, error } = await supabase
-        .from('matches')
+      // Using any temporarily until types are updated
+      const { data, error } = await (supabase as any)
+        .from('profile_boosts')
         .select('*')
+        .eq('user_id', user.id)
+        .gte('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      if (!error && data) {
+        setIsProfileBoosted(true);
+      }
+    } catch (error) {
+      console.error('Error checking boost status:', error);
+    }
+  };
+
+  const handleBoostProfile = () => {
+    setShowBoostDialog(true);
+  };
+
+  const handleWatchAdForBoost = async () => {
+    toast({
+      title: "Publicité regardée !",
+      description: "Votre profil est maintenant boosté pour 30 minutes"
+    });
+
+    try {
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+
+      // Using any temporarily until types are updated
+      await (supabase as any)
+        .from('profile_boosts')
+        .insert({
+          user_id: user?.id,
+          boost_type: 'ad',
+          expires_at: expiresAt.toISOString()
+        });
+      
+      setIsProfileBoosted(true);
+      setShowBoostDialog(false);
+      
+      // Recheck boost status after some time
+      setTimeout(() => {
+        checkBoostStatus();
+      }, 30 * 60 * 1000); // 30 minutes
+    } catch (error) {
+      console.error('Error recording boost:', error);
+    }
+  };
+
+  const handlePayForBoost = async () => {
+    toast({
+      title: "Paiement effectué !",
+      description: "Votre profil est maintenant boosté pour 24 heures"
+    });
+
+    try {
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      // Using any temporarily until types are updated
+      await (supabase as any)
+        .from('profile_boosts')
+        .insert({
+          user_id: user?.id,
+          boost_type: 'payment',
+          expires_at: expiresAt.toISOString()
+        });
+      
+      setIsProfileBoosted(true);
+      setShowBoostDialog(false);
+      
+      // Recheck boost status after some time
+      setTimeout(() => {
+        checkBoostStatus();
+      }, 24 * 60 * 60 * 1000); // 24 hours
+    } catch (error) {
+      console.error('Error recording boost:', error);
+    }
+  };
+
+  const loadMatches = async () => {
+    if (!user) return;
+
+    try {
+      const { data: matchesData, error } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          user1_profile:profiles!matches_user1_id_fkey(*),
+          user2_profile:profiles!matches_user2_id_fkey(*)
+        `)
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      setMatches(data || []);
-    } catch (error: any) {
-      console.error('Error loading matches:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les matches",
-        variant: "destructive"
+
+      const processedMatches = (matchesData || []).map((match) => {
+        const otherProfile = match.user1_id === user.id ? match.user2_profile : match.user1_profile;
+
+        return {
+          ...match,
+          profile: {
+            id: otherProfile.id,
+            user_id: otherProfile.user_id,
+            first_name: otherProfile.first_name,
+            profile_photo_url: otherProfile.profile_photo_url,
+            age: otherProfile.age
+          }
+        };
       });
-    } finally {
-      setLoadingMatches(false);
+
+      setMatches(processedMatches);
+    } catch (error) {
+      console.error('Error loading matches:', error);
     }
-  }, [user, toast]);
+  };
 
-  useEffect(() => {
-    if (user) {
-      Promise.all([
-        loadGivenLikes(),
-        loadReceivedLikes(),
-        loadMatches()
-      ]);
+  const checkRevealedLikes = async () => {
+    if (!user) return;
+
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   const { data, error } = await supabase
+    //     .from('likes_revealed')
+    //     .select('*')
+    //     .eq('user_id', user.id)
+    //     .maybeSingle();
+
+    //   if (error && (error as any).status !== 406 && error.code !== 'PGRST116') {
+    //     console.error('Error checking revealed likes:', error);
+    //     return;
+    //   }
+
+    //   setHasRevealedLikes(!!data);
+    // } catch (error) {
+    //   console.error('Error checking revealed likes:', error);
+    // }
+    setHasRevealedLikes(false);
+  };
+
+  const handleRevealLikes = () => {
+    
+    toast({ title: 'Ouverture…', description: hasRevealedLikes ? 'Affichage des likes reçus' : 'Regarder une pub ou payer pour révéler' });
+    if (hasRevealedLikes) {
+      setShowLikesDialog(true);
+    } else {
+      setShowAdDialog(true);
     }
-  }, [user, loadGivenLikes, loadReceivedLikes, loadMatches]);
-
-  const handleGivenLikeClick = (like: Like) => {
-    const profileData: Profile = {
-      id: like.profile.id,
-      user_id: like.profile.user_id,
-      first_name: like.profile.first_name,
-      age: like.profile.age,
-      profile_photo_url: like.profile.profile_photo_url,
-      additional_photos: (like.profile as any).additional_photos,
-      bio: like.profile.bio,
-      profession: (like.profile as any).profession,
-      interests: (like.profile as any).interests,
-      height: (like.profile as any).height,
-      education: (like.profile as any).education,
-      exercise_frequency: (like.profile as any).exercise_frequency,
-      children: (like.profile as any).children,
-      animals: (like.profile as any).animals,
-      smoker: (like.profile as any).smoker,
-      drinks: (like.profile as any).drinks
-    };
-    setShowGivenLikesProfile(profileData);
   };
 
-  const handleReceivedLikeClick = (like: Like) => {
-    const profileData: Profile = {
-      id: like.profile.id,
-      user_id: like.profile.user_id,
-      first_name: like.profile.first_name,
-      age: like.profile.age,
-      profile_photo_url: like.profile.profile_photo_url,
-      bio: like.profile.bio
-    };
-    setSelectedProfile(profileData);
-    setShowProfileDetail(true);
+  const handleWatchAd = async () => {
+    toast({
+      title: "Publicité regardée !",
+      description: "Vous pouvez maintenant voir qui vous a liké"
+    });
+
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   await supabase
+    //     .from('likes_revealed')
+    //     .insert({
+    //       user_id: user?.id,
+    //       liker_id: receivedLikes[0]?.swiper_id || 'unknown',
+    //       revealed_by: 'ad'
+    //     });
+    // } catch (error) {
+    //   console.error('Error recording revealed likes:', error);
+    // }
+    
+    setHasRevealedLikes(true);
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
+  };
   };
 
-  const handleMatchClick = (match: Match) => {
-    navigate(`/chat/${match.id}`);
+  const handlePayToReveal = async () => {
+    toast({
+      title: "Paiement effectué !",
+      description: "Vous pouvez maintenant voir qui vous a liké"
+    });
+
+    // Désactiver pour l'instant - table likes_revealed n'existe pas
+    // try {
+    //   await supabase
+    //     .from('likes_revealed')
+    //     .insert({
+    //       user_id: user?.id,
+    //       liker_id: receivedLikes[0]?.swiper_id || 'unknown',
+    //       revealed_by: 'payment'
+    //     });
+    // } catch (error) {
+    //   console.error('Error recording revealed likes:', error);
+    // }
+      
+    setHasRevealedLikes(true);
+    setShowAdDialog(false);
+    setShowLikesDialog(true);
   };
 
-  const handleRemoveLike = useCallback((profileId: string) => {
-    setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
-  }, []);
-
-  const handleLikeBack = async (userId: string) => {
+  const handleLikeBack = async (likerId: string) => {
     if (!user) return;
 
     try {
-      // Record the swipe
-      const { error: swipeError } = await supabase
+      const { error } = await supabase
         .from('swipes')
         .insert({
           swiper_id: user.id,
-          swiped_id: userId,
+          swiped_id: likerId,
           is_like: true
         });
 
-      if (swipeError) throw swipeError;
+      if (error) throw error;
 
-      // Check if it's a match
-      const { data: existingSwipe } = await supabase
-        .from('swipes')
-        .select('*')
-        .eq('swiper_id', userId)
-        .eq('swiped_id', user.id)
-        .eq('is_like', true)
-        .maybeSingle();
-
-      if (existingSwipe) {
-        // Create match
-        const { error: matchError } = await supabase
-          .from('matches')
-          .insert({
-            user1_id: user.id < userId ? user.id : userId,
-            user2_id: user.id < userId ? userId : user.id,
-            is_active: true
-          });
-
-        if (matchError) throw matchError;
-
-        toast({
-          title: "🎉 C'est un match !",
-          description: "Vous pouvez maintenant vous envoyer des messages"
-        });
-
-        // Refresh matches
-        loadMatches();
-      } else {
-        toast({
-          title: "❤️ Like envoyé !",
-          description: "Espérons que c'est réciproque !"
-        });
-      }
-
-      // Remove from received likes
-      setReceivedLikes(prev => prev.filter(like => like.profile.user_id !== userId));
-      setShowProfileDetail(false);
-
-    } catch (error: any) {
+      toast({
+        title: "Like envoyé !",
+        description: "Vous avez liké cette personne en retour"
+      });
+      
+      // Recharger les données
+      loadData();
+    } catch (error) {
       console.error('Error liking back:', error);
       toast({
         title: "Erreur",
@@ -348,274 +452,351 @@ const ProfileView: React.FC = () => {
     }
   };
 
-  const handleWatchAd = () => {
-    // Simulate watching ad
-    toast({
-      title: "Pub terminée !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
-    });
-    setRevealedLikesCount(receivedLikes.length);
-    setShowRevealDialog(false);
-  };
-
-  const handlePayToReveal = () => {
-    // Would integrate with payment system
-    toast({
-      title: "Achat effectué !",
-      description: "Vous pouvez maintenant voir qui vous a liké"
-    });
-    setRevealedLikesCount(receivedLikes.length);
-    setShowRevealDialog(false);
-  };
-
-  if (isEditMode) {
-    return (
-      <ProfileEditor 
-        open={isEditMode}
-        onOpenChange={setIsEditMode}
-      />
-    );
-  }
-
-  if (showGivenLikesProfile) {
-    return (
-      <GivenLikesProfileView
-        profile={showGivenLikesProfile}
-        onBack={() => setShowGivenLikesProfile(null)}
-        onRemoveLike={handleRemoveLike}
-      />
-    );
-  }
-
   if (!profile) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <Card className="p-6 text-center">
-          <h3 className="text-lg font-semibold mb-2">Profil introuvable</h3>
-          <p className="text-muted-foreground mb-4">
-            Veuillez créer votre profil pour accéder à cette page.
-          </p>
-          <Button onClick={() => navigate('/profile/edit')}>
-            Créer mon profil
-          </Button>
-        </Card>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold">Chargement du profil...</h2>
+        </div>
       </div>
     );
   }
 
+  const displayPhotos = profile.additional_photos || [];
+  const allPhotos = profile.profile_photo_url 
+    ? [profile.profile_photo_url, ...displayPhotos].slice(0, 6)
+    : displayPhotos.slice(0, 6);
+
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="h-full bg-background overflow-y-auto pb-20">
       {/* Header */}
-      <div className="bg-background border-b border-border/10 sticky top-0 z-10">
-        <div className="flex items-center justify-between p-4">
-          <h1 className="text-2xl font-bold">Mon Profil</h1>
-          <Button
-            variant="ghost" 
-            size="icon"
-            onClick={() => setIsEditMode(true)}
-          >
-            <Edit className="w-5 h-5" />
-          </Button>
+      <div className="relative">
+        <div className="h-48 bg-gradient-hero"></div>
+        
+        <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
+          <div className="relative">
+            <Avatar className="w-32 h-32 border-4 border-background shadow-love">
+              <AvatarImage src={profile.profile_photo_url} alt={profile.first_name} />
+              <AvatarFallback className="text-2xl">{profile.first_name?.[0] || 'U'}</AvatarFallback>
+            </Avatar>
+            <Button 
+              size="sm" 
+              variant="secondary" 
+              className="absolute bottom-0 right-0 rounded-full w-8 h-8 p-0"
+              onClick={() => setShowProfileEditor(true)}
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Scrollable Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
-          {/* Profile Summary Card */}
-          <Card className="p-6">
-            <div className="flex items-start space-x-4">
-              <Avatar className="w-20 h-20 border-2 border-primary/20">
-                <AvatarImage src={profile.profile_photo_url} alt={profile.first_name} />
-                <AvatarFallback className="text-xl">
-                  {profile.first_name?.[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-semibold text-foreground">
-                  {profile.first_name}, {profile.age}
-                </h2>
-                {profile.profession && (
-                  <div className="flex items-center text-muted-foreground mt-1">
-                    <Briefcase className="w-4 h-4 mr-1" />
-                    <span className="text-sm">{profile.profession}</span>
-                  </div>
-                )}
-                {profile.bio && (
-                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                    {profile.bio}
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Activity Cards */}
-          <div className="grid grid-cols-1 gap-4">
-            {/* Given Likes */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <Heart className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">Likes donnés</h3>
-                </div>
-                <Badge variant="secondary">
-                  {loadingGivenLikes ? '...' : givenLikes.length}
-                </Badge>
-              </div>
-              
-              {loadingGivenLikes ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : givenLikes.length > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {givenLikes.slice(0, 8).map((like) => (
-                    <div 
-                      key={like.id}
-                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
-                      onClick={() => handleGivenLikeClick(like)}
-                    >
-                      <img
-                        src={like.profile.profile_photo_url}
-                        alt={like.profile.first_name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Aucun like envoyé pour le moment
-                </p>
-              )}
-            </Card>
-
-            {/* Received Likes */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <Eye className="w-5 h-5 text-accent" />
-                  <h3 className="font-semibold">Likes reçus</h3>
-                </div>
-                <Badge variant="secondary">
-                  {loadingReceivedLikes ? '...' : receivedLikes.length}
-                </Badge>
-              </div>
-              
-              {loadingReceivedLikes ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : receivedLikes.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-4 gap-2">
-                    {receivedLikes.slice(0, revealedLikesCount).map((like) => (
-                      <div 
-                        key={like.id}
-                        className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
-                        onClick={() => handleReceivedLikeClick(like)}
-                      >
-                        <img
-                          src={like.profile.profile_photo_url}
-                          alt={like.profile.first_name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                    ))}
-                    {Array.from({ length: Math.min(8, receivedLikes.length - revealedLikesCount) }).map((_, index) => (
-                      <div 
-                        key={`blurred-${index}`}
-                        className="aspect-square rounded-lg overflow-hidden relative cursor-pointer"
-                        onClick={() => setShowRevealDialog(true)}
-                      >
-                        <img
-                          src={receivedLikes[revealedLikesCount + index]?.profile.profile_photo_url}
-                          alt="Profil masqué"
-                          className="w-full h-full object-cover blur-md"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                          <Lock className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {revealedLikesCount < receivedLikes.length && (
-                    <Button 
-                      onClick={() => setShowRevealDialog(true)}
-                      variant="outline" 
-                      className="w-full mt-2"
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Voir {receivedLikes.length - revealedLikesCount} like{receivedLikes.length - revealedLikesCount > 1 ? 's' : ''}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Aucun like reçu pour le moment
-                </p>
-              )}
-            </Card>
-
-            {/* Matches */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center space-x-2">
-                  <MessageCircle className="w-5 h-5 text-success" />
-                  <h3 className="font-semibold">Matches</h3>
-                </div>
-                <Badge variant="secondary">
-                  {loadingMatches ? '...' : matches.length}
-                </Badge>
-              </div>
-              
-              {loadingMatches ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : matches.length > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {matches.slice(0, 8).map((match) => (
-                    <div 
-                      key={match.id}
-                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center"
-                      onClick={() => handleMatchClick(match)}
-                    >
-                      <MessageCircle className="w-8 h-8 text-primary" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Aucun match pour le moment
-                </p>
-              )}
-            </Card>
+      {/* Profile Info */}
+      <div className="pt-20 px-4">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-foreground">
+            {profile.first_name}, {profile.age}
+          </h1>
+          <div className="flex items-center justify-center text-muted-foreground mt-2">
+            <MapPin className="w-4 h-4 mr-1" />
+            <span>Paris, France</span>
           </div>
+          {profile.profession && (
+            <div className="flex items-center justify-center text-muted-foreground mt-1">
+              <Briefcase className="w-4 h-4 mr-1" />
+              <span>{profile.profession}</span>
+            </div>
+          )}
         </div>
-      </ScrollArea>
 
-      {/* Reveal Dialog */}
-      <Dialog open={showRevealDialog} onOpenChange={setShowRevealDialog}>
-        <DialogContent className="sm:max-w-md">
+        <div className="flex justify-center space-x-4 mb-8">
+          <Button variant="love" className="flex-1 max-w-32" onClick={() => navigate('/profile-edit')}>
+            <Edit className="w-4 h-4 mr-2" />
+            Modifier
+          </Button>
+          <Button 
+            variant={isProfileBoosted ? "default" : "outline"} 
+            className="flex-1 max-w-32" 
+            onClick={handleBoostProfile}
+          >
+            {isProfileBoosted ? (
+              <>🚀 Boosté</>
+            ) : (
+              <>🚀 Boost</>
+            )}
+          </Button>
+          <Button variant="outline" className="flex-1 max-w-32" onClick={onNavigateToSettings}>
+            <Settings className="w-4 h-4 mr-2" />
+            Réglages
+          </Button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <Card 
+            className="text-center cursor-pointer hover:shadow-md transition-shadow"
+            onClick={handleRevealLikes}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRevealLikes(); }}
+            aria-label="Voir likes reçus"
+          >
+            <CardContent 
+              className="p-4"
+              onClick={handleRevealLikes}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRevealLikes(); }}
+              aria-label="Ouvrir les likes reçus"
+            >
+              <div className="flex flex-col items-center space-y-2">
+                <div className="relative">
+                  <Heart className="w-6 h-6 text-primary" />
+                  {!hasRevealedLikes && <Lock className="w-3 h-3 absolute -top-1 -right-1 text-muted-foreground" />}
+                </div>
+                <div className="text-2xl font-bold text-primary">{receivedLikes.length}</div>
+                <div className="text-sm text-muted-foreground">Likes reçus</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className="text-center cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => {
+              // Navigation vers l'onglet Messages
+              window.location.hash = '#messages';
+              window.dispatchEvent(new CustomEvent('navigate-to-messages'));
+            }}
+          >
+            <CardContent className="p-4">
+              <div className="flex flex-col items-center space-y-2">
+                <MessageCircle className="w-6 h-6 text-primary" />
+                <div className="text-2xl font-bold text-message">{matches.length}</div>
+                <div className="text-sm text-muted-foreground">Matches</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card 
+            className="text-center cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setShowGivenLikesDialog(true)}
+          >
+            <CardContent className="p-4">
+              <div className="flex flex-col items-center space-y-2">
+                <Eye className="w-6 h-6 text-primary" />
+                <div className="text-2xl font-bold text-like">{givenLikes.length}</div>
+                <div className="text-sm text-muted-foreground">Likes donnés</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bio Section */}
+        {profile.bio && (
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-3 flex items-center">
+                <Heart className="w-5 h-5 mr-2 text-primary" />
+                À propos de moi
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                {profile.bio}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Interests */}
+        {profile.interests && profile.interests.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-3">Mes centres d'intérêt</h3>
+              <div className="flex flex-wrap gap-2">
+                {profile.interests.map((interest, index) => (
+                  <Badge key={index} variant="secondary" className="text-sm">
+                    {interest}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Photos */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h3 className="font-semibold mb-3">Mes photos</h3>
+            <div className="grid grid-cols-3 gap-3">
+              {allPhotos.map((photo, index) => (
+                <div key={index} className="aspect-square relative">
+                  <img 
+                    src={photo} 
+                    alt={`Photo ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </div>
+              ))}
+              {allPhotos.length < 6 && (
+                <div 
+                  className="aspect-square border-2 border-dashed border-border rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors"
+                  onClick={() => {
+                    setShowProfileEditor(true);
+                  }}
+                >
+                  <div className="text-center">
+                    <Camera className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Ajouter</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Profile Editor Dialog */}
+      {showProfileEditor && (
+        <ProfileEditor
+          open={showProfileEditor}
+          onOpenChange={setShowProfileEditor}
+        />
+      )}
+
+      {/* Likes Received Dialog */}
+      <Dialog open={showLikesDialog} onOpenChange={setShowLikesDialog}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <Eye className="w-5 h-5 mr-2" />
-              Voir les likes
-            </DialogTitle>
-            <DialogDescription>
-              Découvrez qui vous a liké ! Regardez une pub ou payez pour débloquer immédiatement.
-            </DialogDescription>
+            <DialogTitle>Likes reçus ({receivedLikes.length})</DialogTitle>
+            <DialogDescription className="sr-only">Liste des personnes qui vous ont liké</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-4">
+              {receivedLikes.map((like) => (
+                <div key={like.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={like.profile.profile_photo_url} />
+                    <AvatarFallback>{like.profile.first_name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h4 className="font-semibold">{like.profile.first_name}, {like.profile.age}</h4>
+                    {like.profile.bio && (
+                      <p className="text-sm text-muted-foreground line-clamp-1">{like.profile.bio}</p>
+                    )}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedProfile(like.profile);
+                        setShowProfileDetail(true);
+                      }}
+                    >
+                      Voir
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleLikeBack(like.swiper_id)}
+                      className="rounded-full"
+                    >
+                      <Heart className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Given Likes Dialog */}
+      <Dialog open={showGivenLikesDialog} onOpenChange={setShowGivenLikesDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Likes donnés ({givenLikes.length})</DialogTitle>
+            <DialogDescription className="sr-only">Liste des profils que vous avez likés</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-4">
+              {givenLikes.map((like) => (
+                <div key={like.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={like.profile.profile_photo_url} />
+                    <AvatarFallback>{like.profile.first_name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h4 className="font-semibold">{like.profile.first_name}, {like.profile.age}</h4>
+                    {like.profile.bio && (
+                      <p className="text-sm text-muted-foreground line-clamp-1">{like.profile.bio}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (onViewGivenLikesProfile) {
+                        setShowGivenLikesDialog(false);
+                        onViewGivenLikesProfile(like.profile);
+                      } else {
+                        setSelectedProfile(like.profile);
+                        setShowProfileDetail(true);
+                      }
+                    }}
+                  >
+                    Voir profil
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Boost Dialog */}
+      <Dialog open={showBoostDialog} onOpenChange={setShowBoostDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>🚀 Booster votre profil</DialogTitle>
+            <DialogDescription className="sr-only">Améliorez la visibilité de votre profil</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {receivedLikes.length - revealedLikesCount} personne{receivedLikes.length - revealedLikesCount > 1 ? 's' : ''} vous {receivedLikes.length - revealedLikesCount > 1 ? 'ont' : 'a'} liké !
+            <div className="text-center">
+              <p className="text-muted-foreground mb-4">
+                Boostez votre profil pour être vu en priorité et recevoir plus de likes !
+              </p>
+              <div className="bg-muted/50 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold mb-2">Avantages du boost :</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Profil affiché en priorité</li>
+                  <li>• 10x plus de visibilité</li>
+                  <li>• Plus de chances de match</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex flex-col space-y-3">
+              <Button onClick={handleWatchAdForBoost} className="w-full">
+                <Play className="w-4 h-4 mr-2" />
+                Regarder une pub (30 min gratuit)
+              </Button>
+              <Button onClick={handlePayForBoost} variant="outline" className="w-full">
+                Payer 1.99€ (24h de boost)
+              </Button>
+            </div>
+            <p className="text-xs text-center text-muted-foreground">
+              💚 Notre devise : Entièrement gratuit avec les pubs !
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ad Dialog */}
+      <Dialog open={showAdDialog} onOpenChange={setShowAdDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Voir qui vous a liké</DialogTitle>
+            <DialogDescription className="sr-only">Accédez à la liste des likes reçus</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-center text-muted-foreground">
+              {receivedLikes.length} personne{receivedLikes.length > 1 ? 's' : ''} vous {receivedLikes.length > 1 ? 'ont' : 'a'} liké !
             </p>
             <div className="flex flex-col space-y-3">
               <Button onClick={handleWatchAd} className="w-full">
@@ -635,7 +816,7 @@ const ProfileView: React.FC = () => {
         profile={selectedProfile}
         open={showProfileDetail}
         onOpenChange={setShowProfileDetail}
-        onLike={(userId) => handleLikeBack(userId)}
+        onLike={handleLikeBack}
         showLikeButton={true}
       />
     </div>

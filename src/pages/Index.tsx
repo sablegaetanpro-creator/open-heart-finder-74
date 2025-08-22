@@ -124,7 +124,15 @@ const Index = () => {
       case 'messages':
         return <EnhancedMessagesView onStartChat={handleStartChat} />;
       case 'profile':
-        return <ProfileView />;
+        return (
+          <ProfileView 
+            onNavigateToSettings={() => setActiveTab('settings')}
+            onViewGivenLikesProfile={(profile) => {
+              setSelectedProfile(profile);
+              setCurrentView('given-likes-profile');
+            }}
+          />
+        );
       case 'settings':
         return <SettingsPage onNavigateBack={() => setActiveTab('profile')} />;
       default:
