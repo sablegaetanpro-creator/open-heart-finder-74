@@ -100,32 +100,11 @@ const ProfileView: React.FC = () => {
     console.log('🚀 Starting loadGivenLikes for user:', user.id);
     
     try {
-      // Fetch from Supabase with proper join
       const { data, error } = await supabase
         .from('swipes')
         .select(`
-          id,
-          swiper_id,
-          swiped_id,
-          created_at,
-          swiped_profile:profiles!swiped_id(
-            id,
-            user_id,
-            first_name,
-            profile_photo_url,
-            age,
-            bio,
-            profession,
-            interests,
-            height,
-            education,
-            exercise_frequency,
-            children,
-            animals,
-            smoker,
-            drinks,
-            additional_photos
-          )
+          *,
+          swiped_profile:profiles!swiped_id(*)
         `)
         .eq('swiper_id', user.id)
         .eq('is_like', true)
@@ -166,18 +145,8 @@ const ProfileView: React.FC = () => {
       const { data, error } = await supabase
         .from('swipes')
         .select(`
-          id,
-          swiper_id,
-          swiped_id,
-          created_at,
-          swiper_profile:profiles!swiper_id(
-            id,
-            user_id,
-            first_name,
-            profile_photo_url,
-            age,
-            bio
-          )
+          *,
+          swiper_profile:profiles!swiper_id(*)
         `)
         .eq('swiped_id', user.id)
         .eq('is_like', true)
@@ -208,10 +177,13 @@ const ProfileView: React.FC = () => {
     
     setLoadingMatches(true);
     try {
-      // Simple query for matches without join for now
       const { data, error } = await supabase
         .from('matches')
-        .select('*')
+        .select(`
+          *,
+          user1_profile:profiles!matches_user1_id_fkey(*),
+          user2_profile:profiles!matches_user2_id_fkey(*)
+        `)
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
