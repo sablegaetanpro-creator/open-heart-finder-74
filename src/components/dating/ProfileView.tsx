@@ -100,30 +100,57 @@ const ProfileView: React.FC = () => {
     console.log('🚀 Starting loadGivenLikes for user:', user.id);
     
     try {
-      const { data, error } = await supabase
+      // First, get the swipes
+      const { data: swipesData, error: swipesError } = await supabase
         .from('swipes')
-        .select(`
-          *,
-          swiped_profile:profiles!swiped_id(*)
-        `)
+        .select('*')
         .eq('swiper_id', user.id)
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      console.log('📊 Supabase response:', { data, error });
+      console.log('📊 Given likes swipes data:', swipesData);
+      console.log('❌ Given likes swipes error:', swipesError);
 
-      if (error) {
-        console.error('❌ Error loading given likes:', error);
-        throw error;
+      if (swipesError) {
+        console.error('❌ Error loading given likes swipes:', swipesError);
+        throw swipesError;
       }
 
-      const likesWithProfiles = data?.map(like => ({
-        ...like,
-        profile: like.swiped_profile
-      })).filter(like => like.profile) || [];
+      if (!swipesData || swipesData.length === 0) {
+        console.log('📭 No given likes found');
+        setGivenLikes([]);
+        return;
+      }
 
-      console.log('✅ Given likes loaded successfully:', likesWithProfiles.length);
-      setGivenLikes(likesWithProfiles);
+      // Then get the profiles for these swipes
+      const userIds = swipesData.map(swipe => swipe.swiped_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', userIds);
+
+      console.log('👤 Profiles data for given likes:', profilesData);
+      console.log('❌ Profiles error:', profilesError);
+
+      if (profilesError) {
+        console.error('❌ Error loading profiles for given likes:', profilesError);
+        throw profilesError;
+      }
+
+      // Transform the data to match our interface
+      const transformedLikes = swipesData.map((swipe: any) => {
+        const profile = profilesData?.find(p => p.user_id === swipe.swiped_id);
+        return {
+          id: swipe.id,
+          swiper_id: swipe.swiper_id,
+          swiped_id: swipe.swiped_id,
+          created_at: swipe.created_at,
+          profile: profile || null
+        };
+      }).filter(like => like.profile !== null); // Only keep likes with valid profiles
+
+      console.log('✅ Transformed given likes:', transformedLikes);
+      setGivenLikes(transformedLikes);
       
     } catch (error: any) {
       console.error('❌ Error in loadGivenLikes:', error);
@@ -142,24 +169,51 @@ const ProfileView: React.FC = () => {
     
     setLoadingReceivedLikes(true);
     try {
-      const { data, error } = await supabase
+      // First, get the swipes
+      const { data: swipesData, error: swipesError } = await supabase
         .from('swipes')
-        .select(`
-          *,
-          swiper_profile:profiles!swiper_id(*)
-        `)
+        .select('*')
         .eq('swiped_id', user.id)
         .eq('is_like', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      const likesWithProfiles = data?.map(like => ({
-        ...like,
-        profile: like.swiper_profile
-      })).filter(like => like.profile) || [];
+      console.log('💖 Received likes swipes data:', swipesData);
+      console.log('❌ Received likes swipes error:', swipesError);
 
-      setReceivedLikes(likesWithProfiles);
+      if (swipesError) throw swipesError;
+
+      if (!swipesData || swipesData.length === 0) {
+        console.log('📭 No received likes found');
+        setReceivedLikes([]);
+        return;
+      }
+
+      // Then get the profiles for these swipes
+      const userIds = swipesData.map(swipe => swipe.swiper_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', userIds);
+
+      console.log('👤 Profiles data for received likes:', profilesData);
+      console.log('❌ Profiles error:', profilesError);
+
+      if (profilesError) throw profilesError;
+
+      // Transform the data to match our interface
+      const transformedLikes = swipesData.map((swipe: any) => {
+        const profile = profilesData?.find(p => p.user_id === swipe.swiper_id);
+        return {
+          id: swipe.id,
+          swiper_id: swipe.swiper_id,
+          swiped_id: swipe.swiped_id,
+          created_at: swipe.created_at,
+          profile: profile || null
+        };
+      }).filter(like => like.profile !== null); // Only keep likes with valid profiles
+
+      console.log('✅ Transformed received likes:', transformedLikes);
+      setReceivedLikes(transformedLikes);
     } catch (error: any) {
       console.error('Error loading received likes:', error);
       toast({
@@ -177,20 +231,54 @@ const ProfileView: React.FC = () => {
     
     setLoadingMatches(true);
     try {
-      const { data, error } = await supabase
+      // First, get the matches
+      const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
-        .select(`
-          *,
-          user1_profile:profiles!matches_user1_id_fkey(*),
-          user2_profile:profiles!matches_user2_id_fkey(*)
-        `)
+        .select('*')
         .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      setMatches(data || []);
+      console.log('💕 Matches data:', matchesData);
+      console.log('❌ Matches error:', matchesError);
+
+      if (matchesError) throw matchesError;
+
+      if (!matchesData || matchesData.length === 0) {
+        console.log('📭 No matches found');
+        setMatches([]);
+        return;
+      }
+
+      // Get all user IDs involved in matches (excluding current user)
+      const userIds = matchesData.map(match => 
+        match.user1_id === user.id ? match.user2_id : match.user1_id
+      );
+
+      // Then get the profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', userIds);
+
+      console.log('👤 Profiles data for matches:', profilesData);
+      console.log('❌ Profiles error:', profilesError);
+
+      if (profilesError) throw profilesError;
+
+      // Enrich matches with profile data
+      const enrichedMatches = matchesData.map(match => {
+        const otherUserId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+        const otherUserProfile = profilesData?.find(p => p.user_id === otherUserId);
+        
+        return {
+          ...match,
+          profile: otherUserProfile // Simplified for UI compatibility
+        };
+      }).filter(match => match.profile); // Only keep matches with valid profiles
+
+      console.log('✅ Enriched matches:', enrichedMatches);
+      setMatches(enrichedMatches);
     } catch (error: any) {
       console.error('Error loading matches:', error);
       toast({
