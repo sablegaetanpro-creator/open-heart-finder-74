@@ -108,7 +108,7 @@ const ProfileView: React.FC = () => {
           swiper_id,
           swiped_id,
           created_at,
-          profiles!swipes_swiped_id_fkey(
+          swiped_profile:profiles!swiped_id(
             id,
             user_id,
             first_name,
@@ -140,7 +140,7 @@ const ProfileView: React.FC = () => {
 
       const likesWithProfiles = data?.map(like => ({
         ...like,
-        profile: Array.isArray(like.profiles) ? like.profiles[0] : like.profiles
+        profile: like.swiped_profile
       })).filter(like => like.profile) || [];
 
       console.log('✅ Given likes loaded successfully:', likesWithProfiles.length);
@@ -170,7 +170,7 @@ const ProfileView: React.FC = () => {
           swiper_id,
           swiped_id,
           created_at,
-          profiles!swipes_swiper_id_fkey(
+          swiper_profile:profiles!swiper_id(
             id,
             user_id,
             first_name,
@@ -187,7 +187,7 @@ const ProfileView: React.FC = () => {
       
       const likesWithProfiles = data?.map(like => ({
         ...like,
-        profile: Array.isArray(like.profiles) ? like.profiles[0] : like.profiles
+        profile: like.swiper_profile
       })).filter(like => like.profile) || [];
 
       setReceivedLikes(likesWithProfiles);
