@@ -32,7 +32,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (error) {
           console.error('Session error:', error);
+          // Clear any stale session data on error
+          await supabase.auth.signOut();
           if (mounted) {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
             setLoading(false);
           }
           return;

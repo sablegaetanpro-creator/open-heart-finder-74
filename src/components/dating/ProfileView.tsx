@@ -94,13 +94,18 @@ const ProfileView: React.FC = () => {
   const [revealedLikesCount, setRevealedLikesCount] = useState(0);
 
   const loadGivenLikes = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('🚫 No user found, cannot load given likes');
+      setGivenLikes([]);
+      setLoadingGivenLikes(false);
+      return;
+    }
     
     setLoadingGivenLikes(true);
     console.log('🚀 Starting loadGivenLikes for user:', user.id);
     
     try {
-      // First, get the swipes
+      // First, get the swipes with better error handling
       const { data: swipesData, error: swipesError } = await supabase
         .from('swipes')
         .select('*')
@@ -109,7 +114,6 @@ const ProfileView: React.FC = () => {
         .order('created_at', { ascending: false });
 
       console.log('📊 Given likes swipes data:', swipesData);
-      console.log('❌ Given likes swipes error:', swipesError);
 
       if (swipesError) {
         console.error('❌ Error loading given likes swipes:', swipesError);
@@ -124,13 +128,14 @@ const ProfileView: React.FC = () => {
 
       // Then get the profiles for these swipes
       const userIds = swipesData.map(swipe => swipe.swiped_id);
+      console.log('👥 Loading profiles for user IDs:', userIds);
+      
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .in('user_id', userIds);
 
       console.log('👤 Profiles data for given likes:', profilesData);
-      console.log('❌ Profiles error:', profilesError);
 
       if (profilesError) {
         console.error('❌ Error loading profiles for given likes:', profilesError);
@@ -140,6 +145,9 @@ const ProfileView: React.FC = () => {
       // Transform the data to match our interface
       const transformedLikes = swipesData.map((swipe: any) => {
         const profile = profilesData?.find(p => p.user_id === swipe.swiped_id);
+        if (!profile) {
+          console.warn('⚠️ No profile found for swiped_id:', swipe.swiped_id);
+        }
         return {
           id: swipe.id,
           swiper_id: swipe.swiper_id,
@@ -154,11 +162,23 @@ const ProfileView: React.FC = () => {
       
     } catch (error: any) {
       console.error('❌ Error in loadGivenLikes:', error);
+      
+      // More specific error messages
+      let errorMessage = "Impossible de charger les likes envoyés";
+      if (error.code === 'PGRST116') {
+        errorMessage = "Problème de connexion à la base de données";
+      } else if (error.message?.includes('auth')) {
+        errorMessage = "Problème d'authentification. Veuillez vous reconnecter.";
+      }
+      
       toast({
         title: "Erreur",
-        description: "Impossible de charger les likes envoyés",
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      // Set empty array on error to show the "no likes" message
+      setGivenLikes([]);
     } finally {
       setLoadingGivenLikes(false);
     }
@@ -644,10 +664,26 @@ const ProfileView: React.FC = () => {
                   {matches.slice(0, 8).map((match) => (
                     <div 
                       key={match.id}
-                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center"
+                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity relative"
                       onClick={() => handleMatchClick(match)}
                     >
-                      <MessageCircle className="w-8 h-8 text-primary" />
+                      {match.profile?.profile_photo_url ? (
+                        <>
+                          <img
+                            src={match.profile.profile_photo_url}
+                            alt={match.profile.first_name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute bottom-1 right-1 bg-success rounded-full p-1">
+                            <MessageCircle className="w-3 h-3 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                          <MessageCircle className="w-8 h-8 text-primary" />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
