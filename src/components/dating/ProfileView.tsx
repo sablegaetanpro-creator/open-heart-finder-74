@@ -126,16 +126,13 @@ const ProfileView: React.FC = () => {
         return;
       }
 
-      // Then get the profiles for these swipes
-      const userIds = swipesData.map(swipe => swipe.swiped_id);
+      // Then get the profiles for these swipes using RPC to bypass RLS restrictions
       console.log('👥 Loading profiles for user IDs:', userIds);
       
       const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('user_id', userIds);
+        .rpc('get_profiles_for_user_ids', { user_ids: userIds });
 
-      console.log('👤 Profiles data for given likes:', profilesData);
+      console.log('👤 Profiles data for given likes (via RPC):', profilesData);
 
       if (profilesError) {
         console.error('❌ Error loading profiles for given likes:', profilesError);
