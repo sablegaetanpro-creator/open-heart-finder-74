@@ -302,6 +302,30 @@ export type Database = {
         }
         Returns: string
       }
+      get_given_likes_profiles: {
+        Args: { target_user_id: string }
+        Returns: {
+          additional_photos: string[]
+          age: number
+          animals: string
+          bio: string
+          children: string
+          created_at: string
+          drinks: string
+          education: string
+          exercise_frequency: string
+          first_name: string
+          height: number
+          interests: string[]
+          profession: string
+          profile_id: string
+          profile_photo_url: string
+          smoker: boolean
+          swipe_id: string
+          swiped_id: string
+          swiper_id: string
+        }[]
+      }
       validate_email: {
         Args: { email: string }
         Returns: boolean

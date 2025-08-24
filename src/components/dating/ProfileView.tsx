@@ -105,54 +105,48 @@ const ProfileView: React.FC = () => {
     console.log('🚀 Starting loadGivenLikes for user:', user.id);
     
     try {
-      // First, get the swipes with better error handling
-      const { data: swipesData, error: swipesError } = await supabase
-        .from('swipes')
-        .select('*')
-        .eq('swiper_id', user.id)
-        .eq('is_like', true)
-        .order('created_at', { ascending: false });
+      // Use the new RPC function to bypass RLS restrictions
+      const { data: likesData, error: likesError } = await supabase
+        .rpc('get_given_likes_profiles', { target_user_id: user.id });
 
-      console.log('📊 Given likes swipes data:', swipesData);
+      console.log('💕 Given likes via RPC:', likesData);
 
-      if (swipesError) {
-        console.error('❌ Error loading given likes swipes:', swipesError);
-        throw swipesError;
+      if (likesError) {
+        console.error('❌ Error loading given likes via RPC:', likesError);
+        throw likesError;
       }
 
-      if (!swipesData || swipesData.length === 0) {
+      if (!likesData || likesData.length === 0) {
         console.log('📭 No given likes found');
         setGivenLikes([]);
         return;
       }
 
-      // Then get the profiles for these swipes using RPC to bypass RLS restrictions
-      console.log('👥 Loading profiles for user IDs:', userIds);
-      
-      const { data: profilesData, error: profilesError } = await supabase
-        .rpc('get_profiles_for_user_ids', { user_ids: userIds });
-
-      console.log('👤 Profiles data for given likes (via RPC):', profilesData);
-
-      if (profilesError) {
-        console.error('❌ Error loading profiles for given likes:', profilesError);
-        throw profilesError;
-      }
-
-      // Transform the data to match our interface
-      const transformedLikes = swipesData.map((swipe: any) => {
-        const profile = profilesData?.find(p => p.user_id === swipe.swiped_id);
-        if (!profile) {
-          console.warn('⚠️ No profile found for swiped_id:', swipe.swiped_id);
+      // Transform the RPC data to match our interface
+      const transformedLikes = likesData.map((item: any) => ({
+        id: item.swipe_id,
+        swiper_id: item.swiper_id,
+        swiped_id: item.swiped_id,
+        created_at: item.created_at,
+        profile: {
+          id: item.profile_id,
+          user_id: item.swiped_id,
+          first_name: item.first_name,
+          age: item.age,
+          profile_photo_url: item.profile_photo_url,
+          bio: item.bio,
+          profession: item.profession,
+          interests: item.interests,
+          height: item.height,
+          education: item.education,
+          exercise_frequency: item.exercise_frequency,
+          children: item.children,
+          animals: item.animals,
+          smoker: item.smoker,
+          drinks: item.drinks,
+          additional_photos: item.additional_photos
         }
-        return {
-          id: swipe.id,
-          swiper_id: swipe.swiper_id,
-          swiped_id: swipe.swiped_id,
-          created_at: swipe.created_at,
-          profile: profile || null
-        };
-      }).filter(like => like.profile !== null); // Only keep likes with valid profiles
+      }));
 
       console.log('✅ Transformed given likes:', transformedLikes);
       setGivenLikes(transformedLikes);
