@@ -5,6 +5,8 @@ import OnboardingHero from '@/components/dating/OnboardingHero';
 import SingleProfileSwipeInterface from '@/components/dating/SingleProfileSwipeInterface';
 import EnhancedMessagesView from '@/components/dating/EnhancedMessagesView';
 import ProfileView from '@/components/dating/ProfileView';
+import OfflineModeIndicator from '@/components/dating/OfflineModeIndicator';
+import { useOffline } from '@/hooks/useOffline';
 import SettingsPage from '@/components/dating/SettingsPage';
 import ProfileEditPage from '@/pages/ProfileEditPage';
 import BottomNavigation from '@/components/layout/BottomNavigation';
@@ -14,6 +16,7 @@ import BackButtonHandler from '@/components/dating/BackButtonHandler';
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const { isOnline } = useOffline();
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState('discover');
   const [currentView, setCurrentView] = useState<'discover' | 'messages' | 'profile' | 'settings' | 'given-likes-profile'>('discover');
@@ -124,7 +127,12 @@ const Index = () => {
       case 'messages':
         return <EnhancedMessagesView onStartChat={handleStartChat} />;
       case 'profile':
-        return <ProfileView />;
+        return (
+          <>
+            {!isOnline && <OfflineModeIndicator />}
+            <ProfileView />
+          </>
+        );
       case 'settings':
         return <SettingsPage onNavigateBack={() => setActiveTab('profile')} />;
       default:

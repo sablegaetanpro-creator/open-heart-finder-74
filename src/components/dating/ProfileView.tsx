@@ -351,9 +351,44 @@ const ProfileView: React.FC = () => {
     navigate(`/chat/${match.id}`);
   };
 
-  const handleRemoveLike = useCallback((profileId: string) => {
-    setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
-  }, []);
+  const handleRemoveLike = useCallback(async (profileId: string) => {
+    if (!user) return;
+
+    try {
+      // Remove the swipe instead of adding a new one
+      const { error: deleteError } = await supabase
+        .from('swipes')
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', profileId);
+
+      if (deleteError) {
+        console.error('Error removing like:', deleteError);
+        toast({
+          title: "Erreur",
+          description: "Impossible de retirer le like",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update local state
+      setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
+      
+      toast({
+        title: "✅ Like retiré",
+        description: "Le like a été retiré avec succès"
+      });
+
+    } catch (error: any) {
+      console.error('Error in handleRemoveLike:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de retirer le like",
+        variant: "destructive"
+      });
+    }
+  }, [user, toast]);
 
   const handleLikeBack = async (userId: string) => {
     if (!user) return;
