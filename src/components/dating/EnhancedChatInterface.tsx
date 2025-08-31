@@ -93,7 +93,42 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   useEffect(() => {
     loadMessages();
     scrollToBottom();
-  }, [matchId]);
+    
+    // Set up real-time subscription for new messages
+    const channel = supabase
+      .channel(`messages-${matchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `match_id=eq.${matchId}`
+        },
+        (payload) => {
+          console.log('Real-time message received:', payload);
+          const newMessage: Message = {
+            id: payload.new.id,
+            content: payload.new.content,
+            sender_id: payload.new.sender_id,
+            created_at: payload.new.created_at,
+            media_type: payload.new.media_type || undefined,
+            media_url: payload.new.media_url || undefined,
+            is_read: payload.new.is_read || false
+          };
+          
+          // Only add if it's not from current user (avoid duplicates)
+          if (payload.new.sender_id !== user?.id) {
+            setMessages(prev => [...prev, newMessage]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [matchId, user?.id]);
 
   useEffect(() => {
     scrollToBottom();
