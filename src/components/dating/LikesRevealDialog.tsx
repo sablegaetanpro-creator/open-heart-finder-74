@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { Play } from 'lucide-react';
 
 interface LikesRevealDialogProps {
   open: boolean;

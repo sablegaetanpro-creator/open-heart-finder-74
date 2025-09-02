@@ -1,7 +1,6 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { Bot } from 'lucide-react';
 
 interface AssistantProfileHeaderProps {
   onBack: () => void;

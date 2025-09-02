@@ -1,7 +1,5 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { FileImage } from 'lucide-react';
 
 interface FileDropZoneProps {
   isVisible: boolean;

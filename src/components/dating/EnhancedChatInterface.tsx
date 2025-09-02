@@ -1,7 +1,6 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface EnhancedChatInterfaceProps {
   matchId: string;
@@ -22,57 +21,41 @@ const EnhancedChatInterface: React.FC<EnhancedChatInterfaceProps> = ({
   onShowProfile
 }) => {
   return (
-    <ChatContainer
-      handleDragEnter={handleDragEnter}
-      handleDragLeave={handleDragLeave}
-      handleDragOver={handleDragOver}
-      handleDrop={handleDrop}
-    >
-      {/* Media Preview Modal */}
-      <MediaPreviewModal
-        previewMedia={previewMedia}
-        uploadProgress={uploadProgress}
-        isSending={isSending}
-        onCancel={cancelMediaUpload}
-        onConfirm={confirmMediaUpload}
-      />
-
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <ChatHeaderContent
-        matchId={matchId}
-        otherUser={otherUser}
-        onBack={onBack}
-        onShowProfile={onShowProfile}
-        onReport={handleReport}
-        onBlock={handleBlock}
-      />
+      <div className="flex items-center justify-between p-4 border-b">
+        <Button variant="ghost" size="icon" onClick={onBack}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="flex items-center space-x-3">
+          <img 
+            src={otherUser.avatar} 
+            alt={otherUser.name}
+            className="w-8 h-8 rounded-full object-cover"
+          />
+          <span className="font-medium">{otherUser.name}</span>
+        </div>
+        <div className="w-10" /> {/* Spacer */}
+      </div>
 
-      {/* Messages */}
-      <ChatMessages 
-        messages={messages}
-        renderMessage={renderMessage}
-        messagesEndRef={messagesEndRef}
-      />
+      {/* Messages Area - Placeholder */}
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <p>Interface de chat en développement...</p>
+      </div>
 
-      {/* Input Area */}
-      <ChatInputSection
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        handleKeyPress={handleKeyPress}
-        isSending={isSending}
-        isRecording={isRecording}
-        fileInputRef={fileInputRef}
-        videoInputRef={videoInputRef}
-        handleImageUpload={handleImageUpload}
-        handleVideoUpload={handleVideoUpload}
-        startRecording={startRecording}
-        stopRecording={stopRecording}
-        handleSendText={handleSendText}
-        recordingDuration={recordingDuration}
-        formatRecordingTime={formatRecordingTime}
-        dragCounterRef={dragCounterRef}
-      />
-    </ChatContainer>
+      {/* Input Area - Placeholder */}
+      <div className="p-4 border-t">
+        <div className="flex items-center space-x-2">
+          <input 
+            type="text" 
+            placeholder="Tapez votre message..."
+            className="flex-1 p-2 border rounded-lg"
+            disabled
+          />
+          <Button disabled>Envoyer</Button>
+        </div>
+      </div>
+    </div>
   );
 };
 

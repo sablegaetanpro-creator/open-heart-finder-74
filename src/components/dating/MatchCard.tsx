@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Heart, X } from 'lucide-react';
 
 interface MatchCardProps {
@@ -64,7 +65,7 @@ const formatTime = (timestamp: string) => {
   const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
   if (diffInHours < 1) {
-    return 'À l'instant';
+    return "À l'instant";
   } else if (diffInHours < 24) {
     return `Il y a ${Math.floor(diffInHours)}h`;
   } else {

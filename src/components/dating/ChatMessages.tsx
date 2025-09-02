@@ -1,7 +1,5 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ChatMessagesProps {
   messages: any[];

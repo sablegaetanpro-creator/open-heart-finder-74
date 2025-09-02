@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Heart, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Play } from 'lucide-react';
 
 interface AdRevealDialogProps {
   open: boolean;

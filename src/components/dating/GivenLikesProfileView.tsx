@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import GivenLikesVerticalCard from './GivenLikesVerticalCard';

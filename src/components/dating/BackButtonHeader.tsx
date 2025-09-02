@@ -1,7 +1,6 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface BackButtonHeaderProps {
   onBack: () => void;

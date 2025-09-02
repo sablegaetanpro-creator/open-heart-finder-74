@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -139,7 +140,7 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Header with Back Button */}
-      <BackButtonHeader onBack={onBack} title="Profil liké" />
+      <BackButtonHeader onBack={onBack} />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
