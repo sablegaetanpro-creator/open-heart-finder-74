@@ -2,9 +2,6 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import CloseButton from './CloseButton';
-import PhotoNavigation from './PhotoNavigation';
-import Thumbnail from './Thumbnail';
 
 interface PhotoGalleryProps {
   photos: string[];
@@ -56,23 +53,72 @@ const PhotoGallery: React.FC<PhotoGalleryProps> = ({
             />
             
             {/* Navigation précédent/suivant */}
-            <PhotoNavigation
-              currentIndex={currentIndex}
-              totalPhotos={photos.length}
-              onPrev={prevPhoto}
-              onNext={nextPhoto}
-            />
+            {photos.length > 1 && (
+              <>
+                {currentIndex > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-12 h-12 p-0"
+                    onClick={prevPhoto}
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                )}
+                
+                {currentIndex < photos.length - 1 && (
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full w-12 h-12 p-0"
+                    onClick={nextPhoto}
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
+                )}
+              </>
+            )}
 
             {/* Bouton fermer */}
-            <CloseButton onClick={onClose} />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full w-10 h-10 p-0"
+              onClick={onClose}
+            >
+              <X className="w-5 h-5" />
+            </Button>
           </div>
 
           {/* Miniatures */}
-          <Thumbnail
-            photos={photos}
-            currentIndex={currentIndex}
-            onThumbnailClick={goToPhoto}
-          />
+          {photos.length > 1 && (
+            <div className="p-4 bg-black/80">
+              <div className="flex justify-center space-x-2 overflow-x-auto">
+                {photos.map((photo, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToPhoto(index)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentIndex 
+                        ? 'border-primary ring-2 ring-primary/50' 
+                        : 'border-white/30 hover:border-white/60'
+                    }`}
+                  >
+                    <img
+                      src={photo}
+                      alt={`Miniature ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+              
+              {/* Indicateur */}
+              <div className="text-center mt-2 text-white/70 text-sm">
+                {currentIndex + 1} / {photos.length}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

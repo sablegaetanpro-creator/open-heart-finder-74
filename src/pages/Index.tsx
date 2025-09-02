@@ -1,47 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { offlineDataManager } from '@/lib/offlineDataManager';
+import OnboardingHero from '@/components/dating/OnboardingHero';
 import SingleProfileSwipeInterface from '@/components/dating/SingleProfileSwipeInterface';
 import EnhancedMessagesView from '@/components/dating/EnhancedMessagesView';
 import ProfileView from '@/components/dating/ProfileView';
+import OfflineModeIndicator from '@/components/dating/OfflineModeIndicator';
+import { useOffline } from '@/hooks/useOffline';
+import SettingsPage from '@/components/dating/SettingsPage';
+import ProfileEditPage from '@/pages/ProfileEditPage';
 import BottomNavigation from '@/components/layout/BottomNavigation';
 import InterstitialAd from '@/components/monetization/InterstitialAd';
-import BackButtonHandler from '@/components/dating/BackButtonHandler';
-import { useOffline } from '@/hooks/useOffline';
-import { useNetworkStatus } from '@/hooks/useNetworkStatus';
-import ProfileEditPage from './ProfileEditPage';
-import NotFound from './NotFound';
-import OnboardingHero from '@/components/dating/OnboardingHero';
-import OfflineModeIndicator from '@/components/dating/OfflineModeIndicator';
-import SettingsPage from '@/components/dating/SettingsPage';
 import HappnLikesProfileView from '@/components/dating/HappnLikesProfileView';
+import BackButtonHandler from '@/components/dating/BackButtonHandler';
 
-const Index: React.FC = () => {
+const Index = () => {
   const { user, loading } = useAuth();
   const { isOnline } = useOffline();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { toast } = useToast();
   const [isOnboarding, setIsOnboarding] = useState(false);
-  const [activeTab, setActiveTab] = useState<'discover' | 'messages' | 'profile'>('discover');
+  const [activeTab, setActiveTab] = useState('discover');
   const [currentView, setCurrentView] = useState<'discover' | 'messages' | 'profile' | 'settings' | 'given-likes-profile'>('discover');
   const [selectedProfile, setSelectedProfile] = useState<any>(null);
   const [showInterstitialAd, setShowInterstitialAd] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState('');
 
-  // Écouter les changements de hash et route
+  // Gérer la navigation par hash URL et routes
+  const [currentRoute, setCurrentRoute] = useState('');
+  
   useEffect(() => {
     const path = window.location.pathname + window.location.hash;
     setCurrentRoute(path);
     
     const hash = window.location.hash.slice(1); // Enlever le #
     if (hash === 'settings') {
-      setActiveTab('profile');
+      setActiveTab('settings');
     } else if (hash && !path.includes('/profile-edit')) {
-      setActiveTab(hash as any);
+      setActiveTab(hash);
     }
   }, []);
 
@@ -53,26 +46,25 @@ const Index: React.FC = () => {
       
       const hash = window.location.hash.slice(1);
       if (hash === 'settings') {
-        setActiveTab('profile');
+        setActiveTab('settings');
       } else if (hash && !path.includes('/profile-edit')) {
-        setActiveTab(hash as any);
+        setActiveTab(hash);
       }
     };
 
-    const handleNavigateToMessages = (event: CustomEvent) => {
-      console.log('🔄 [Index] handleNavigateToMessages triggered with event:', event.detail);
+    const handleNavigateToMessages = () => {
       setActiveTab('messages');
       setCurrentView('messages');
     };
 
     window.addEventListener('hashchange', handleRouteChange);
     window.addEventListener('popstate', handleRouteChange);
-    window.addEventListener('navigate-to-messages', handleNavigateToMessages as EventListener);
+    window.addEventListener('navigate-to-messages', handleNavigateToMessages);
     
     return () => {
       window.removeEventListener('hashchange', handleRouteChange);
       window.removeEventListener('popstate', handleRouteChange);
-      window.removeEventListener('navigate-to-messages', handleNavigateToMessages as EventListener);
+      window.removeEventListener('navigate-to-messages', handleNavigateToMessages);
     };
   }, []);
 
@@ -85,21 +77,15 @@ const Index: React.FC = () => {
   }
 
   if (!user) {
-    navigate('/auth');
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const handleGetStarted = () => {
     setIsOnboarding(false);
   };
 
-  const handleStartChat = (matchId: string) => {
-    console.log('🔄 [Index] handleStartChat called with matchId:', matchId);
+  const handleStartChat = (matchId: string, otherUser?: any) => {
     setActiveTab('messages');
-    setCurrentView('messages');
-    
-    // Dispatch custom event to notify other components
-    window.dispatchEvent(new CustomEvent('navigate-to-messages', { detail: { matchId } }));
   };
 
   if (isOnboarding) {
@@ -114,6 +100,8 @@ const Index: React.FC = () => {
           profile={selectedProfile}
           onBack={() => setCurrentView('profile')}
           onRemoveLike={async (profileId) => {
+            
+            
             // Retour à l'onglet découvrir directement
             setActiveTab('discover');
             setCurrentView('discover');
@@ -137,14 +125,16 @@ const Index: React.FC = () => {
           </div>
         );
       case 'messages':
-        console.log('💬 [Index] Rendering EnhancedMessagesView with handleStartChat');
         return <EnhancedMessagesView onStartChat={handleStartChat} />;
       case 'profile':
         return (
           <>
+            {!isOnline && <OfflineModeIndicator />}
             <ProfileView />
           </>
         );
+      case 'settings':
+        return <SettingsPage onNavigateBack={() => setActiveTab('profile')} />;
       default:
         return (
           <div className="flex-1">
@@ -164,7 +154,7 @@ const Index: React.FC = () => {
         <BottomNavigation 
           activeTab={activeTab} 
           onTabChange={(tab) => {
-            setActiveTab(tab as any);
+            setActiveTab(tab);
             setCurrentView(tab as any);
           }} 
         />

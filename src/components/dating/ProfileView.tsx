@@ -27,10 +27,6 @@ import { useNavigate } from 'react-router-dom';
 import ProfileEditor from './ProfileEditor';
 import ProfileDetailView from './ProfileDetailView';
 import GivenLikesProfileView from './GivenLikesProfileView';
-import ProfileStats from './ProfileStats';
-import ProfileSummary from './ProfileSummary';
-import RevealLikesDialog from './RevealLikesDialog';
-import ProfileEditButton from './ProfileEditButton';
 
 interface Like {
   id: string;
@@ -519,7 +515,13 @@ const ProfileView: React.FC = () => {
       <div className="bg-background border-b border-border/10 sticky top-0 z-10">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-2xl font-bold">Mon Profil</h1>
-          <ProfileEditButton onEditClick={() => setIsEditMode(true)} />
+          <Button
+            variant="ghost" 
+            size="icon"
+            onClick={() => setIsEditMode(true)}
+          >
+            <Edit className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
@@ -527,34 +529,228 @@ const ProfileView: React.FC = () => {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {/* Profile Summary Card */}
-          <ProfileSummary 
-            profile={profile} 
-            onEditClick={() => setIsEditMode(true)} 
-          />
+          <Card className="p-6">
+            <div className="flex items-start space-x-4">
+              <Avatar className="w-20 h-20 border-2 border-primary/20">
+                <AvatarImage src={profile.profile_photo_url} alt={profile.first_name} />
+                <AvatarFallback className="text-xl">
+                  {profile.first_name?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-semibold text-foreground">
+                  {profile.first_name}, {profile.age}
+                </h2>
+                {profile.profession && (
+                  <div className="flex items-center text-muted-foreground mt-1">
+                    <Briefcase className="w-4 h-4 mr-1" />
+                    <span className="text-sm">{profile.profession}</span>
+                  </div>
+                )}
+                {profile.bio && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                    {profile.bio}
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
 
           {/* Activity Cards */}
-          <ProfileStats
-            givenLikesCount={givenLikes.length}
-            receivedLikesCount={receivedLikes.length}
-            matchesCount={matches.length}
-            loadingGivenLikes={loadingGivenLikes}
-            loadingReceivedLikes={loadingReceivedLikes}
-            loadingMatches={loadingMatches}
-            onGivenLikesClick={() => {}}
-            onReceivedLikesClick={() => {}}
-            onMatchesClick={() => {}}
-          />
+          <div className="grid grid-cols-1 gap-4">
+            {/* Given Likes */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Heart className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold">Likes donnés</h3>
+                </div>
+                <Badge variant="secondary">
+                  {loadingGivenLikes ? '...' : givenLikes.length}
+                </Badge>
+              </div>
+              
+              {loadingGivenLikes ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : givenLikes.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {givenLikes.slice(0, 8).map((like) => (
+                    <div 
+                      key={like.id}
+                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+                      onClick={() => handleGivenLikeClick(like)}
+                    >
+                      <img
+                        src={like.profile.profile_photo_url}
+                        alt={like.profile.first_name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucun like envoyé pour le moment
+                </p>
+              )}
+            </Card>
+
+            {/* Received Likes */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <Eye className="w-5 h-5 text-accent" />
+                  <h3 className="font-semibold">Likes reçus</h3>
+                </div>
+                <Badge variant="secondary">
+                  {loadingReceivedLikes ? '...' : receivedLikes.length}
+                </Badge>
+              </div>
+              
+              {loadingReceivedLikes ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : receivedLikes.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-4 gap-2">
+                    {receivedLikes.slice(0, revealedLikesCount).map((like) => (
+                      <div 
+                        key={like.id}
+                        className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+                        onClick={() => handleReceivedLikeClick(like)}
+                      >
+                        <img
+                          src={like.profile.profile_photo_url}
+                          alt={like.profile.first_name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                    {Array.from({ length: Math.min(8, receivedLikes.length - revealedLikesCount) }).map((_, index) => (
+                      <div 
+                        key={`blurred-${index}`}
+                        className="aspect-square rounded-lg overflow-hidden relative cursor-pointer"
+                        onClick={() => setShowRevealDialog(true)}
+                      >
+                        <img
+                          src={receivedLikes[revealedLikesCount + index]?.profile.profile_photo_url}
+                          alt="Profil masqué"
+                          className="w-full h-full object-cover blur-md"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <Lock className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {revealedLikesCount < receivedLikes.length && (
+                    <Button 
+                      onClick={() => setShowRevealDialog(true)}
+                      variant="outline" 
+                      className="w-full mt-2"
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Voir {receivedLikes.length - revealedLikesCount} like{receivedLikes.length - revealedLikesCount > 1 ? 's' : ''}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucun like reçu pour le moment
+                </p>
+              )}
+            </Card>
+
+            {/* Matches */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <MessageCircle className="w-5 h-5 text-success" />
+                  <h3 className="font-semibold">Matches</h3>
+                </div>
+                <Badge variant="secondary">
+                  {loadingMatches ? '...' : matches.length}
+                </Badge>
+              </div>
+              
+              {loadingMatches ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : matches.length > 0 ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {matches.slice(0, 8).map((match) => (
+                    <div 
+                      key={match.id}
+                      className="aspect-square cursor-pointer rounded-lg overflow-hidden hover:opacity-80 transition-opacity relative"
+                      onClick={() => handleMatchClick(match)}
+                    >
+                      {match.profile?.profile_photo_url ? (
+                        <>
+                          <img
+                            src={match.profile.profile_photo_url}
+                            alt={match.profile.first_name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute bottom-1 right-1 bg-success rounded-full p-1">
+                            <MessageCircle className="w-3 h-3 text-white" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                          <MessageCircle className="w-8 h-8 text-primary" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucun match pour le moment
+                </p>
+              )}
+            </Card>
+          </div>
         </div>
       </ScrollArea>
 
       {/* Reveal Dialog */}
-      <RevealLikesDialog
-        open={showRevealDialog}
-        onOpenChange={setShowRevealDialog}
-        onWatchAd={handleWatchAd}
-        onPayToReveal={handlePayToReveal}
-        hiddenLikesCount={receivedLikes.length - revealedLikesCount}
-      />
+      <Dialog open={showRevealDialog} onOpenChange={setShowRevealDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Eye className="w-5 h-5 mr-2" />
+              Voir les likes
+            </DialogTitle>
+            <DialogDescription>
+              Découvrez qui vous a liké ! Regardez une pub ou payez pour débloquer immédiatement.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {receivedLikes.length - revealedLikesCount} personne{receivedLikes.length - revealedLikesCount > 1 ? 's' : ''} vous {receivedLikes.length - revealedLikesCount > 1 ? 'ont' : 'a'} liké !
+            </p>
+            <div className="flex flex-col space-y-3">
+              <Button onClick={handleWatchAd} className="w-full">
+                <Play className="w-4 h-4 mr-2" />
+                Regarder une pub (Gratuit)
+              </Button>
+              <Button onClick={handlePayToReveal} variant="outline" className="w-full">
+                Payer 0.99€ (Sans pub)
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Profile Detail View */}
       <ProfileDetailView

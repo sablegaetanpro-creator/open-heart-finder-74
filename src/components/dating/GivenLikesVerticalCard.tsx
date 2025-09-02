@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   X, 
   MapPin, 
@@ -14,10 +15,6 @@ import {
   Expand
 } from 'lucide-react';
 import PhotoGallery from './PhotoGallery';
-import DislikeProfileButton from './DislikeProfileButton';
-import PhotoGalleryIndicator from './PhotoGalleryIndicator';
-import PhotoNavigationIndicators from './PhotoNavigationIndicators';
-import ProfileInfoSection from './ProfileInfoSection';
 
 interface Profile {
   id: string;
@@ -101,26 +98,132 @@ const GivenLikesVerticalCard: React.FC<GivenLikesVerticalCardProps> = ({
             />
             
             {/* Photo Gallery Indicator */}
-            <PhotoGalleryIndicator onClick={() => setShowPhotoGallery(true)} />
+            <div className="absolute top-4 right-4 bg-black/30 rounded-full p-1">
+              <Expand className="w-4 h-4 text-white" />
+            </div>
           </div>
           
           {/* Photo Navigation Indicators */}
-          <PhotoNavigationIndicators 
-            photos={allPhotos} 
-            currentIndex={currentPhotoIndex} 
-          />
+          {allPhotos.length > 1 && (
+            <div className="absolute top-4 left-4 right-4 flex justify-center space-x-1">
+              {allPhotos.map((_, index) => (
+                <div
+                  key={index}
+                  className={`h-1 flex-1 mx-0.5 rounded-full ${
+                    index === currentPhotoIndex ? 'bg-white' : 'bg-white/30'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Swipe Action Buttons */}
           <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-            <DislikeProfileButton 
-              onRemoveLike={() => onRemoveLike(profile.user_id)} 
-              isProcessing={isProcessing} 
-            />
+            <Button
+              onClick={() => onRemoveLike(profile.user_id)}
+              disabled={isProcessing}
+              size="lg"
+              variant="destructive"
+              className="w-14 h-14 rounded-full shadow-lg hover:scale-110 transition-transform"
+            >
+              <X className="w-6 h-6" />
+            </Button>
           </div>
         </div>
 
         {/* Profile Info Section */}
-        <ProfileInfoSection profile={profile} />
+        <div className="p-4 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-foreground">
+                {profile.first_name}, {profile.age}
+              </h3>
+              {profile.profession && (
+                <div className="flex items-center text-muted-foreground mt-1">
+                  <Briefcase className="w-4 h-4 mr-1" />
+                  <span className="text-sm">{profile.profession}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bio */}
+          {profile.bio && (
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+              {profile.bio}
+            </p>
+          )}
+
+          {/* Quick Stats */}
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            {profile.height && (
+              <div className="flex items-center">
+                <span className="mr-1">📏</span>
+                <span>{profile.height} cm</span>
+              </div>
+            )}
+            
+            {profile.education && (
+              <div className="flex items-center">
+                <GraduationCap className="w-3 h-3 mr-1" />
+                <span className="truncate max-w-[100px]">{profile.education}</span>
+              </div>
+            )}
+            
+            {profile.exercise_frequency && (
+              <div className="flex items-center">
+                <Dumbbell className="w-3 h-3 mr-1" />
+                <span className="truncate">{profile.exercise_frequency}</span>
+              </div>
+            )}
+
+            {profile.children && getChildrenIcon(profile.children) && (
+              <div className="flex items-center">
+                {getChildrenIcon(profile.children)}
+                <span className="ml-1 truncate">{profile.children}</span>
+              </div>
+            )}
+            
+            {profile.animals && getAnimalsIcon(profile.animals) && (
+              <div className="flex items-center">
+                {getAnimalsIcon(profile.animals)}
+                <span className="ml-1 truncate">{profile.animals}</span>
+              </div>
+            )}
+            
+            {profile.smoker && (
+              <div className="flex items-center">
+                <Cigarette className="w-3 h-3 mr-1" />
+                <span>Fumeur</span>
+              </div>
+            )}
+            
+            {profile.drinks && (
+              <div className="flex items-center">
+                <Wine className="w-3 h-3 mr-1" />
+                <span className="truncate">{profile.drinks}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Interests */}
+          {profile.interests && profile.interests.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1">
+                {profile.interests.slice(0, 3).map((interest, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {interest}
+                  </Badge>
+                ))}
+                {profile.interests.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{profile.interests.length - 3}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Photo Gallery Modal */}
