@@ -1,15 +1,32 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Heart, MapPin, Briefcase, X, AlertTriangle } from 'lucide-react';
+import { 
+  MapPin, 
+  Briefcase, 
+  Heart, 
+  Camera, 
+  Edit,
+  Settings,
+  Calendar,
+  Eye,
+  Lock,
+  Play,
+  MessageCircle,
+  X,
+  AlertTriangle
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { offlineDataManager } from '@/lib/offlineDataManager';
+import ConfirmDialog from './ConfirmDialog';
+import DislikeButton from './DislikeButton';
+import LikeBackButton from './LikeBackButton';
 
 interface ProfileDetailViewProps {
   profile: {
@@ -61,26 +78,43 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
     console.log('🔄 Début de la suppression du match...');
     setIsProcessing(true);
     try {
-      // Suppression directe du swipe
-      const { error } = await supabase
+      // Suppression du swipe dans Supabase
+      const { error: supabaseError } = await supabase
         .from('swipes')
         .delete()
         .eq('swiper_id', user.id)
         .eq('swiped_id', profile.user_id);
 
-      if (error) {
-        console.error('❌ Erreur SQL:', error);
-        throw error;
+      if (supabaseError) {
+        console.error('❌ Erreur SQL Supabase:', supabaseError);
+        throw supabaseError;
       }
 
-      console.log('✅ Swipe supprimé');
-      
-      // Forcer une synchronisation complète pour mettre à jour les données locales
-      try {
-        await offlineDataManager.triggerSync();
-        console.log('✅ Synchronisation forcée');
-      } catch (error) {
-        console.error('❌ Erreur synchronisation:', error);
+      console.log('✅ Swipe supprimé de Supabase');
+
+      // Suppression locale aussi
+      const localSwipes = await offlineDataManager.getUserSwipes(user.id);
+      const swipeToDelete = localSwipes.find(swipe => 
+        swipe.swiper_id === user.id && swipe.swiped_id === profile.user_id
+      );
+
+      if (swipeToDelete) {
+        await offlineDataManager.deleteSwipe(swipeToDelete.id);
+        console.log('✅ Swipe supprimé localement');
+      }
+
+      // Si un match existe, le supprimer aussi
+      if (matchId) {
+        const { error: matchError } = await supabase
+          .from('matches')
+          .update({ is_active: false })
+          .eq('id', matchId);
+
+        if (matchError) {
+          console.error('❌ Erreur mise à jour match:', matchError);
+        } else {
+          console.log('✅ Match désactivé');
+        }
       }
 
       // Déclencher le rafraîchissement des données
@@ -280,65 +314,40 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
                   pIndex++;
                 }
 
+                // Bouton "liker en retour" si activé
+                if (showLikeButton && onLike) {
+                  content.push(
+                    <LikeBackButton 
+                      key="like-back"
+                      onLikeBack={() => onLike(profile.user_id)} 
+                      isProcessing={isProcessing} 
+                    />
+                  );
+                }
+
                 return content;
               })()}
             </div>
           </div>
 
           {/* Bouton Dislike en bas uniquement */}
-          <div className="flex justify-center items-center py-4">
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full w-16 h-16 p-0 border-2 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              onClick={handleClose}
-              aria-label="Fermer"
-            >
-              <X className="w-7 h-7" />
-            </Button>
-          </div>
+          <DislikeButton 
+            onClick={handleClose} 
+            isProcessing={isProcessing} 
+          />
         </ScrollArea>
       </DialogContent>
 
       {/* Boîte de dialogue de confirmation */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Supprimer le match
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              Confirmation pour supprimer le match
-            </DialogDescription>
-          </DialogHeader>
-                      <div className="py-4">
-              <p className="text-sm text-muted-foreground text-center">
-                Êtes-vous sûr de vouloir supprimer ce match ?<br />
-                <span className="text-xs text-muted-foreground/70">
-                  Le profil retournera dans "Découvrir" et vous ne verrez plus la conversation.
-                </span>
-              </p>
-            </div>
-          <div className="flex gap-3 justify-end">
-            <Button
-              variant="outline"
-              onClick={cancelClose}
-              className="flex-1"
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmClose}
-              disabled={isProcessing}
-              className="flex-1"
-            >
-              {isProcessing ? "Suppression..." : "Supprimer"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        onConfirm={confirmClose}
+        onCancel={cancelClose}
+        title="Supprimer le match"
+        description="Êtes-vous sûr de vouloir supprimer ce match ? Le profil retournera dans 'Découvrir' et vous ne verrez plus la conversation."
+        isProcessing={isProcessing}
+      />
     </Dialog>
   );
 };

@@ -19,6 +19,9 @@ import PhotoGallery from './PhotoGallery';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import BackButtonHeader from './BackButtonHeader';
+import RemoveLikeButton from './RemoveLikeButton';
+import HappnProfileCard from './HappnProfileCard';
 
 interface Profile {
   id: string;
@@ -65,18 +68,29 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
     // start remove like
     setIsProcessing(true);
     try {
-      // Suppression directe du swipe
-      const { error } = await supabase
+      // Suppression du swipe dans Supabase
+      const { error: supabaseError } = await supabase
         .from('swipes')
         .delete()
         .eq('swiper_id', user.id)
         .eq('swiped_id', profile.user_id);
 
-      // result of remove_user_like
+      if (supabaseError) {
+        console.error('❌ Erreur SQL Supabase:', supabaseError);
+        throw supabaseError;
+      }
 
-      if (error) {
-        console.error('❌ Erreur SQL:', error);
-        throw error;
+      console.log('✅ Swipe supprimé de Supabase');
+
+      // Suppression locale aussi
+      const localSwipes = await offlineDataManager.getUserSwipes(user.id);
+      const swipeToDelete = localSwipes.find(swipe => 
+        swipe.swiper_id === user.id && swipe.swiped_id === profile.user_id
+      );
+
+      if (swipeToDelete) {
+        await offlineDataManager.deleteSwipe(swipeToDelete.id);
+        console.log('✅ Swipe supprimé localement');
       }
 
       // Suppression réussie
@@ -125,191 +139,29 @@ const HappnLikesProfileView: React.FC<HappnLikesProfileViewProps> = ({
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between p-4 bg-background border-b border-border/10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="flex items-center"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
-        <h1 className="text-lg font-semibold">Profil liké</h1>
-        <div className="w-16" />
-      </div>
+      <BackButtonHeader onBack={onBack} title="Profil liké" />
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-sm mx-auto p-4">
           {/* Happn Style Profile Card */}
-          <Card className="w-full bg-card border-0 shadow-card overflow-hidden">
-            {/* Header with name and age - Happn style */}
-            <div className="p-4 pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground">
-                    {profile.first_name}
-                  </h2>
-                  <p className="text-lg text-muted-foreground">{profile.age} ans</p>
-                </div>
-                {profile.profession && (
-                  <div className="flex items-center text-muted-foreground">
-                    <Briefcase className="w-4 h-4 mr-1" />
-                    <span className="text-sm truncate max-w-[100px]">{profile.profession}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Large centered photo - Happn style */}
-            <div className="relative">
-              <div className="aspect-[3/4] w-full">
-                <img
-                  src={allPhotos[currentPhotoIndex]}
-                  alt={profile.first_name}
-                  className="w-full h-full object-cover cursor-pointer"
-                  onClick={() => setShowPhotoGallery(true)}
-                  loading="lazy"
-                />
-                
-                {/* Photo Gallery Indicator */}
-                <div className="absolute top-3 right-3 bg-black/40 rounded-full p-1.5">
-                  <Expand className="w-4 h-4 text-white" />
-                </div>
-              </div>
-              
-              {/* Photo Navigation Dots */}
-              {allPhotos.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                  {allPhotos.map((_, index) => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentPhotoIndex(index);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Info tags below photo - Happn style */}
-            <div className="p-4 space-y-3">
-              {/* Bio */}
-              {profile.bio && (
-                <p className="text-sm text-foreground leading-relaxed">
-                  {profile.bio}
-                </p>
-              )}
-
-              {/* Info Tags */}
-              <div className="flex flex-wrap gap-2">
-                {profile.height && (
-                  <Badge variant="secondary" className="text-xs">
-                    📏 {profile.height} cm
-                  </Badge>
-                )}
-                
-                {profile.education && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    <GraduationCap className="w-3 h-3 mr-1" />
-                    {profile.education}
-                  </Badge>
-                )}
-                
-                {profile.exercise_frequency && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    <Dumbbell className="w-3 h-3 mr-1" />
-                    {profile.exercise_frequency}
-                  </Badge>
-                )}
-
-                {profile.children && getChildrenIcon(profile.children) && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    {getChildrenIcon(profile.children)}
-                    <span className="ml-1">{profile.children}</span>
-                  </Badge>
-                )}
-                
-                {profile.animals && getAnimalsIcon(profile.animals) && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    {getAnimalsIcon(profile.animals)}
-                    <span className="ml-1">{profile.animals}</span>
-                  </Badge>
-                )}
-                
-                {profile.smoker && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    <Cigarette className="w-3 h-3 mr-1" />
-                    Fumeur
-                  </Badge>
-                )}
-                
-                {profile.drinks && (
-                  <Badge variant="secondary" className="text-xs flex items-center">
-                    <Wine className="w-3 h-3 mr-1" />
-                    {profile.drinks}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Interests */}
-              {profile.interests && profile.interests.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">Centres d'intérêt</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {profile.interests.map((interest, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {interest}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Photos Grid */}
-              {allPhotos.length > 1 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-foreground">Photos supplémentaires</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {allPhotos.slice(1).map((photo, index) => (
-                      <img
-                        key={index}
-                        src={photo}
-                        alt={`${profile.first_name} ${index + 2}`}
-                        className="aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setCurrentPhotoIndex(index + 1)}
-                        loading="lazy"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
+          <HappnProfileCard
+            profile={profile}
+            allPhotos={allPhotos}
+            currentPhotoIndex={currentPhotoIndex}
+            onPhotoClick={() => setShowPhotoGallery(true)}
+            onThumbnailClick={setCurrentPhotoIndex}
+            onRemoveLike={handleRemoveLike}
+            isProcessing={isProcessing}
+          />
         </div>
       </div>
 
       {/* Remove Like Button - Fixed at bottom */}
-      <div className="p-4 bg-background border-t border-border/10">
-        <div className="max-w-sm mx-auto">
-          <Button
-            onClick={handleRemoveLike}
-            disabled={isProcessing}
-            variant="destructive"
-            className="w-full flex items-center justify-center"
-            size="lg"
-          >
-            <X className="w-5 h-5 mr-2" />
-            {isProcessing ? "Suppression..." : "Retirer le like"}
-          </Button>
-        </div>
-      </div>
+      <RemoveLikeButton 
+        onRemoveLike={handleRemoveLike} 
+        isProcessing={isProcessing} 
+      />
 
       {/* Photo Gallery Modal */}
       <PhotoGallery
