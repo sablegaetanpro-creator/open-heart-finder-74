@@ -366,29 +366,21 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
               Modifier les filtres
             </Button>
             <Button 
-              onClick={handleRefresh}
-              variant="outline" 
-              className="w-full"
-              disabled={isSyncing}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Synchronisation...' : 'Actualiser'}
-            </Button>
-            <Button 
               onClick={async () => {
                 setIsLoading(true);
-                console.log('🔄 Synchronisation complète forcée par l\'utilisateur...');
-                await offlineDataManager.forceFullSync();
+                console.log('🧹 Nettoyage complet de la base locale...');
+                // Effacer complètement la base locale
+                await offlineDataManager.clearUserData(user?.id || '');
+                // Recharger
                 setTimeout(() => {
                   loadProfilesFromLocal();
-                }, 1000);
+                }, 500);
               }}
               variant="outline" 
               className="w-full"
-              disabled={isSyncing}
             >
-              <Zap className={`w-4 h-4 mr-2`} />
-              Recharger tout
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Réinitialiser
             </Button>
           </div>
           {/* Mount dialog even in empty state so the button works */}
