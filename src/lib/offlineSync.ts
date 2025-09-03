@@ -133,8 +133,11 @@ class OfflineSyncManager {
   }
 
   private async uploadDirtyRecords(userId?: string) {
-    // Upload dirty swipes
-    const dirtySwipes = await offlineDb.swipes.where('is_dirty').equals(1).toArray();
+    // Upload dirty swipes - use filter instead of equals for boolean
+    const allSwipes = await offlineDb.swipes.toArray();
+    const dirtySwipes = allSwipes.filter(swipe => swipe.is_dirty === true);
+    console.log('📤 Upload dirty swipes:', dirtySwipes.length);
+    
     for (const swipe of dirtySwipes) {
       try {
         const { error } = await supabase
@@ -154,14 +157,20 @@ class OfflineSyncManager {
             is_dirty: false,
             last_synced: new Date().toISOString()
           });
+          console.log('✅ Swipe synchronisé:', swipe.id);
+        } else {
+          console.error('❌ Erreur sync swipe:', error);
         }
       } catch (error) {
         console.error('Failed to sync swipe:', error);
       }
     }
 
-    // Upload dirty messages
-    const dirtyMessages = await offlineDb.messages.where('is_dirty').equals(1).toArray();
+    // Upload dirty messages - use filter instead of equals for boolean
+    const allMessages = await offlineDb.messages.toArray();
+    const dirtyMessages = allMessages.filter(message => message.is_dirty === true);
+    console.log('📤 Upload dirty messages:', dirtyMessages.length);
+    
     for (const message of dirtyMessages) {
       try {
         const { error } = await supabase

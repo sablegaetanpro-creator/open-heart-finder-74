@@ -124,7 +124,10 @@ export class OfflineDataManager {
   }
 
   public async getUserSwipes(userId: string): Promise<LocalSwipe[]> {
-    return offlineDb.swipes.where('swiper_id').equals(userId).toArray();
+    console.log('🔍 Recherche swipes pour userId:', userId);
+    const swipes = await offlineDb.swipes.where('swiper_id').equals(userId).toArray();
+    console.log('📊 Swipes trouvés:', swipes.length);
+    return swipes;
   }
 
   public async getUserLikes(userId: string): Promise<LocalSwipe[]> {
