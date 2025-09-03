@@ -12,14 +12,79 @@ export class OfflineDataManager {
 
   // Profile Management
   public async getProfiles(excludeUserIds: string[] = [], limit: number = 50): Promise<LocalProfile[]> {
+    console.log('📊 Recherche profils locaux - excludeIds:', excludeUserIds.length);
+    
     // Get all profiles and filter for complete ones
     const allProfiles = await offlineDb.profiles.toArray();
+    console.log('📊 Total profils en local:', allProfiles.length);
+    
     const completeProfiles = allProfiles.filter(profile => 
       (profile.is_profile_complete === true || profile.is_profile_complete as any === 1) &&
       !excludeUserIds.includes(profile.user_id)
     );
-
+    
+    console.log('📊 Profils complets filtrés:', completeProfiles.length);
     return completeProfiles.slice(0, limit);
+  }
+
+  // Fallback method to load profiles directly from Supabase if local is empty
+  public async getProfilesWithFallback(excludeUserIds: string[] = [], limit: number = 50, currentUserProfile?: any): Promise<LocalProfile[]> {
+    console.log('🔄 getProfilesWithFallback - début');
+    
+    // Try local first
+    const localProfiles = await this.getProfiles(excludeUserIds, limit);
+    
+    if (localProfiles.length > 0) {
+      console.log('✅ Profils trouvés en local:', localProfiles.length);
+      return localProfiles;
+    }
+    
+    // If no local profiles, try direct Supabase fallback
+    console.log('🔄 Aucun profil local, chargement direct depuis Supabase...');
+    try {
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .eq('is_profile_complete', true);
+        
+      // Exclude current user and swiped users
+      if (excludeUserIds.length > 0) {
+        query = query.not('user_id', 'in', `(${excludeUserIds.map(id => `"${id}"`).join(',')})`);
+      }
+      
+      // Apply basic gender compatibility if profile available
+      if (currentUserProfile?.looking_for && currentUserProfile.looking_for !== 'les_deux') {
+        query = query.eq('gender', currentUserProfile.looking_for);
+      }
+      
+      const { data, error } = await query.limit(limit);
+      
+      if (error) {
+        console.error('❌ Erreur chargement Supabase direct:', error);
+        return [];
+      }
+      
+      console.log('✅ Profils chargés depuis Supabase:', data?.length || 0);
+      
+      // Convert to LocalProfile format and optionally store in local DB
+      const profiles: LocalProfile[] = (data || []).map(profile => ({
+        ...profile,
+        last_synced: new Date().toISOString(),
+        is_dirty: false
+      }));
+      
+      // Store in local for future use
+      if (profiles.length > 0) {
+        await offlineDb.profiles.bulkPut(profiles);
+        console.log('💾 Profils sauvegardés en local pour cache');
+      }
+      
+      return profiles;
+      
+    } catch (error) {
+      console.error('❌ Erreur fallback Supabase:', error);
+      return [];
+    }
   }
 
   public async getProfileByUserId(userId: string): Promise<LocalProfile | undefined> {
@@ -188,6 +253,14 @@ export class OfflineDataManager {
     }
 
     return syncManager.performFullSync(this.currentUserId);
+  }
+
+  public async forceFullSync(): Promise<SyncResult> {
+    if (!this.currentUserId) {
+      return { success: false, error: 'No current user', synced_tables: [], total_records: 0 };
+    }
+
+    return syncManager.forceFullSync(this.currentUserId);
   }
 
   public async getOfflineStats() {

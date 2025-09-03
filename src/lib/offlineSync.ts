@@ -79,7 +79,12 @@ class OfflineSyncManager {
       await this.uploadDirtyRecords(userId);
 
       // 2. Download remote changes
-      const profilesCount = await this.syncProfiles(userId);
+      // Check if this is first sync (no profiles in local DB)
+      const localProfilesCount = await offlineDb.profiles.count();
+      const isFirstSync = localProfilesCount === 0;
+      console.log('🔍 Première synchronisation:', isFirstSync, 'Profils locaux:', localProfilesCount);
+      
+      const profilesCount = await this.syncProfiles(userId, isFirstSync);
       if (profilesCount > 0) {
         syncedTables.push('profiles');
         totalRecords += profilesCount;
@@ -182,18 +187,27 @@ class OfflineSyncManager {
     }
   }
 
-  private async syncProfiles(userId?: string): Promise<number> {
-    const lastSync = await this.getLastSync('profiles');
+  private async syncProfiles(userId?: string, forceFullSync: boolean = false): Promise<number> {
+    const lastSync = forceFullSync ? '1970-01-01T00:00:00.000Z' : await this.getLastSync('profiles');
+    console.log('🔄 Synchronisation profils - lastSync:', lastSync, 'forceFullSync:', forceFullSync);
     
     let query = supabase
       .from('profiles')
       .select('*')
-      .gte('updated_at', lastSync)
       .eq('is_profile_complete', true);
 
-    const { data, error } = await query.limit(100);
+    // Only apply time filter if not forcing full sync and not first sync
+    if (!forceFullSync && lastSync !== '1970-01-01T00:00:00.000Z') {
+      query = query.gte('updated_at', lastSync);
+    }
+
+    const { data, error } = await query.limit(200);
+    console.log('📊 Profils récupérés depuis Supabase:', data?.length || 0);
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erreur synchronisation profils:', error);
+      throw error;
+    }
     if (!data || data.length === 0) return 0;
 
     // Store in local database
@@ -204,6 +218,7 @@ class OfflineSyncManager {
     }));
 
     await offlineDb.profiles.bulkPut(profiles);
+    console.log('✅ Profils sauvegardés en local:', profiles.length);
     return profiles.length;
   }
 
@@ -312,7 +327,17 @@ class OfflineSyncManager {
 
   // Public methods for manual sync triggers
   public async forceSyncProfiles(userId: string) {
-    return this.syncProfiles(userId);
+    return this.syncProfiles(userId, true);
+  }
+
+  public async forceFullSync(userId: string): Promise<SyncResult> {
+    console.log('🔄 Synchronisation complète forcée...');
+    // Clear local data first
+    await offlineDb.profiles.clear();
+    await offlineDb.sync_meta.clear();
+    
+    // Then perform full sync
+    return this.performFullSync(userId);
   }
 
   public async getOfflineStats() {

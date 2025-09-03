@@ -144,8 +144,8 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
       const savedFilters = savedFiltersRaw ? JSON.parse(savedFiltersRaw) : null;
       console.log('🔍 Filtres sauvegardés:', savedFilters);
       
-      const localProfiles = await offlineDataManager.getProfiles(excludeIds, 200);
-      console.log('📊 Profils locaux trouvés:', localProfiles.length);
+      const localProfiles = await offlineDataManager.getProfilesWithFallback(excludeIds, 200, profile);
+      console.log('📊 Profils trouvés (local + fallback):', localProfiles.length);
 
       const compatibleProfiles = localProfiles.filter((p: any) => {
         const genderMatch = (
@@ -191,8 +191,49 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
       setCurrentProfileIndex(0);
       
       if (compatibleProfiles.length === 0 && isOnline) {
-        console.log('🔄 Aucun profil trouvé, synchronisation...');
-        await triggerSync();
+        console.log('🔄 Aucun profil trouvé, synchronisation complète...');
+        await offlineDataManager.forceFullSync();
+        // Retry loading after sync
+        const retryProfiles = await offlineDataManager.getProfilesWithFallback(excludeIds, 200, profile);
+        const retryCompatible = retryProfiles.filter((p: any) => {
+          const genderMatch = (
+            (profile.looking_for === 'les_deux' || profile.looking_for === p.gender) &&
+            (p.looking_for === 'les_deux' || p.looking_for === profile.gender)
+          );
+          if (!genderMatch) return false;
+          if (!savedFilters) return true;
+          // Same filtering logic as above
+          if (savedFilters.gender && savedFilters.gender !== 'tous') {
+            const targetGender = savedFilters.gender === 'non_binaire' ? 'autre' : savedFilters.gender;
+            if (p.gender !== targetGender) return false;
+          }
+          if (p.age < savedFilters.ageRange[0] || p.age > savedFilters.ageRange[1]) return false;
+          if (savedFilters.relationshipType !== 'tous' && (p.relationship_type || p.relationshipType) !== savedFilters.relationshipType) return false;
+          if (p.height == null || p.height < savedFilters.height[0] || p.height > savedFilters.height[1]) return false;
+          if (savedFilters.smoker !== 'tous' && String(p.smoker) !== savedFilters.smoker) return false;
+          if (savedFilters.drinks !== 'tous' && p.drinks !== savedFilters.drinks) return false;
+          if (savedFilters.animals !== 'tous' && p.animals !== savedFilters.animals) return false;
+          if (savedFilters.children !== 'tous' && p.children !== savedFilters.children) return false;
+          if (savedFilters.exerciseFrequency !== 'tous' && p.exercise_frequency !== savedFilters.exerciseFrequency) return false;
+          if (savedFilters.bodyType?.length && !savedFilters.bodyType.includes(p.body_type || p.bodyType || '')) return false;
+          if (savedFilters.religion?.length && !savedFilters.religion.includes(p.religion || '')) return false;
+          if (savedFilters.politics?.length && !savedFilters.politics.includes(p.politics || '')) return false;
+          if (savedFilters.education?.length && !savedFilters.education.some((v: string) => (p.education || '').includes(v))) return false;
+          if (savedFilters.profession?.length && !savedFilters.profession.some((v: string) => (p.profession || '').includes(v))) return false;
+          if (savedFilters.interests?.length) {
+            const hasCommon = (p.interests || []).some((i: string) => savedFilters.interests.includes(i));
+            if (!hasCommon) return false;
+          }
+          if (typeof savedFilters.maxDistance === 'number') {
+            const d = haversineKm((profile as any).location, (p as any).location);
+            if (d != null && d > savedFilters.maxDistance) return false;
+          }
+          return true;
+        });
+        console.log('🔄 Profils après retry:', retryCompatible.length);
+        if (retryCompatible.length > 0) {
+          setProfiles(retryCompatible as Profile[]);
+        }
       }
       
     } catch (error: any) {
@@ -332,6 +373,22 @@ const SingleProfileSwipeInterface: React.FC<SingleProfileSwipeInterfaceProps> = 
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Synchronisation...' : 'Actualiser'}
+            </Button>
+            <Button 
+              onClick={async () => {
+                setIsLoading(true);
+                console.log('🔄 Synchronisation complète forcée par l\'utilisateur...');
+                await offlineDataManager.forceFullSync();
+                setTimeout(() => {
+                  loadProfilesFromLocal();
+                }, 1000);
+              }}
+              variant="outline" 
+              className="w-full"
+              disabled={isSyncing}
+            >
+              <Zap className={`w-4 h-4 mr-2`} />
+              Recharger tout
             </Button>
           </div>
           {/* Mount dialog even in empty state so the button works */}
