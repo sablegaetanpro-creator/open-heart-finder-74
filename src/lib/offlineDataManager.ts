@@ -293,13 +293,23 @@ export class OfflineDataManager {
   }
 
   public async removeSwipeByUsers(swiperId: string, swipedId: string): Promise<void> {
-    console.log('🗑️ Suppression swipe local:', { swiperId, swipedId });
+    console.log('🗑️ Suppression swipe local - DÉBUT:', { swiperId, swipedId });
+    
+    // First, find and log existing swipes
+    const existingSwipes = await offlineDb.swipes
+      .where('swiper_id').equals(swiperId)
+      .and(swipe => swipe.swiped_id === swipedId)
+      .toArray();
+    
+    console.log('📊 Swipes trouvés à supprimer:', existingSwipes.length, existingSwipes);
     
     // Delete from local database
-    await offlineDb.swipes
+    const deleteCount = await offlineDb.swipes
       .where('swiper_id').equals(swiperId)
       .and(swipe => swipe.swiped_id === swipedId)
       .delete();
+    
+    console.log('🗑️ Swipes supprimés de la base locale:', deleteCount);
     
     // Delete from Supabase
     const { error } = await supabase
@@ -308,10 +318,20 @@ export class OfflineDataManager {
       .eq('swiper_id', swiperId)
       .eq('swiped_id', swipedId);
     
+    console.log('📊 Résultat suppression Supabase:', { error });
+    
     if (error) {
       console.error('❌ Erreur suppression Supabase:', error);
       throw error;
     }
+    
+    // Verify deletion
+    const remainingSwipes = await offlineDb.swipes
+      .where('swiper_id').equals(swiperId)
+      .and(swipe => swipe.swiped_id === swipedId)
+      .toArray();
+    
+    console.log('🔍 Swipes restants après suppression:', remainingSwipes.length);
     
     console.log('✅ Swipe supprimé des deux bases de données');
     
