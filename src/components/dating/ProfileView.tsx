@@ -355,25 +355,16 @@ const ProfileView: React.FC = () => {
     if (!user) return;
 
     try {
-      // Remove the swipe instead of adding a new one
-      const { error: deleteError } = await supabase
-        .from('swipes')
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', profileId);
+      console.log('🔄 ProfileView - Suppression du like pour:', profileId);
+      
+      // Use offlineDataManager for consistent deletion
+      await offlineDataManager.removeSwipeByUsers(user.id, profileId);
 
-      if (deleteError) {
-        console.error('Error removing like:', deleteError);
-        toast({
-          title: "Erreur",
-          description: "Impossible de retirer le like",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Update local state
+      // Update local state immediately
       setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
+      
+      // Reload given likes to ensure UI consistency
+      await loadGivenLikes();
       
       toast({
         title: "✅ Like retiré",
@@ -388,7 +379,7 @@ const ProfileView: React.FC = () => {
         variant: "destructive"
       });
     }
-  }, [user, toast]);
+  }, [user, toast, loadGivenLikes]);
 
   const handleLikeBack = async (userId: string) => {
     if (!user) return;

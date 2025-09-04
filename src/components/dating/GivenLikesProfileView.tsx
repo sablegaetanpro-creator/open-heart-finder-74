@@ -2,8 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 import GivenLikesVerticalCard from './GivenLikesVerticalCard';
 
 interface Profile {
@@ -46,21 +46,9 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
     try {
       console.log('🔄 Démarrage de la suppression du like pour:', profile.first_name, profileId);
       
-      // Suppression directe du swipe
-      const { error } = await supabase
-        .from('swipes') 
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', profileId);
+      // Use offlineDataManager to handle both local and remote deletion
+      await offlineDataManager.removeSwipeByUsers(user.id, profileId);
 
-      console.log('📊 Résultat de la suppression:', { error });
-
-      if (error) {
-        console.error('❌ Erreur SQL:', error);
-        throw error;
-      }
-
-      // Suppression réussie
       console.log('✅ Like supprimé avec succès');
       toast({
         title: "✅ Like retiré avec succès", 

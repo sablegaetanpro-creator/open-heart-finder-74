@@ -292,6 +292,35 @@ export class OfflineDataManager {
     await offlineDb.swipes.delete(swipeId);
   }
 
+  public async removeSwipeByUsers(swiperId: string, swipedId: string): Promise<void> {
+    console.log('🗑️ Suppression swipe local:', { swiperId, swipedId });
+    
+    // Delete from local database
+    await offlineDb.swipes
+      .where('swiper_id').equals(swiperId)
+      .and(swipe => swipe.swiped_id === swipedId)
+      .delete();
+    
+    // Delete from Supabase
+    const { error } = await supabase
+      .from('swipes')
+      .delete()
+      .eq('swiper_id', swiperId)
+      .eq('swiped_id', swipedId);
+    
+    if (error) {
+      console.error('❌ Erreur suppression Supabase:', error);
+      throw error;
+    }
+    
+    console.log('✅ Swipe supprimé des deux bases de données');
+    
+    // Trigger sync to ensure consistency
+    if (await syncManager.getNetworkStatus()) {
+      await this.triggerSync();
+    }
+  }
+
   // Initialize offline data for a user
   public async initializeUserData(userId: string): Promise<void> {
     this.setCurrentUser(userId);
