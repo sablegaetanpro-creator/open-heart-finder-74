@@ -530,6 +530,45 @@ const ProfileView: React.FC = () => {
             </div>
           </Card>
 
+          {/* Action Buttons */}
+          <div className="grid grid-cols-3 gap-3">
+            <Button
+              onClick={() => setIsEditMode(true)}
+              className="flex-1 bg-primary hover:bg-primary/90 text-white"
+              size="lg"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Modifier
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex-1"
+              size="lg"
+              onClick={() => {
+                toast({
+                  title: "🚀 Boost",
+                  description: "Fonctionnalité à venir bientôt!"
+                });
+              }}
+            >
+              🚀 Boost
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="flex-1"
+              size="lg"
+              onClick={() => {
+                // Navigation vers les paramètres
+                window.location.hash = '#settings';
+              }}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Réglages
+            </Button>
+          </div>
+
           {/* Activity Cards */}
           <div className="grid grid-cols-1 gap-4">
             {/* Given Likes */}
