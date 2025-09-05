@@ -351,35 +351,17 @@ const ProfileView: React.FC = () => {
     navigate(`/chat/${match.id}`);
   };
 
-  const handleRemoveLike = useCallback(async (profileId: string) => {
-    if (!user) return;
-
-    try {
-      console.log('🔄 ProfileView - Suppression du like pour:', profileId);
-      
-      // Use offlineDataManager for consistent deletion
-      await offlineDataManager.removeSwipeByUsers(user.id, profileId);
-
-      // Update local state immediately
-      setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
-      
-      // Reload given likes to ensure UI consistency
-      await loadGivenLikes();
-      
-      toast({
-        title: "✅ Like retiré",
-        description: "Le like a été retiré avec succès"
-      });
-
-    } catch (error: any) {
-      console.error('Error in handleRemoveLike:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de retirer le like",
-        variant: "destructive"
-      });
-    }
-  }, [user, toast, loadGivenLikes]);
+  const handleRemoveLike = useCallback((profileId: string) => {
+    console.log('🔄 ProfileView - Gestion d\'état après suppression pour:', profileId);
+    
+    // Update local state immediately (no API call - deletion already done)
+    setGivenLikes(prev => prev.filter(like => like.profile.user_id !== profileId));
+    
+    // Close the profile view and return to main profile
+    setShowGivenLikesProfile(null);
+    
+    console.log('✅ ProfileView - État mis à jour et navigation effectuée');
+  }, []);
 
   const handleLikeBack = async (userId: string) => {
     if (!user) return;

@@ -44,21 +44,22 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
     
     setIsProcessing(true);
     try {
-      console.log('🔄 Démarrage de la suppression du like pour:', profile.first_name, profileId);
+      console.log('🔄 GivenLikesProfileView - Suppression du like pour:', profile.first_name, profileId);
       
-      // Use offlineDataManager to handle both local and remote deletion
+      // ONLY handle the deletion - no navigation or state management
       await offlineDataManager.removeSwipeByUsers(user.id, profileId);
 
-      console.log('✅ Like supprimé avec succès');
+      console.log('✅ Like supprimé avec succès dans GivenLikesProfileView');
+      
       toast({
         title: "✅ Like retiré avec succès", 
         description: `${profile.first_name} retournera dans Découvrir`,
         duration: 4000
       });
 
-      // Call the callback to handle navigation and refresh
+      // Call the callback for state management and navigation
       onRemoveLike(profileId);
-      onBack();
+      
     } catch (error: any) {
       console.error('❌ Erreur lors de la suppression du like:', error);
       toast({
@@ -70,7 +71,7 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [isProcessing, user, profile, onRemoveLike, onBack]);
+  }, [isProcessing, user, profile, onRemoveLike]);
 
   return (
     <div className="flex-1 flex flex-col">
