@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { OfflineProvider } from "@/hooks/useOffline";
+// Offline functionality removed for simplification
 import { RealTimeProvider } from "@/components/dating/RealTimeProvider";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import Index from "./pages/Index";
@@ -19,7 +19,6 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <RealTimeProvider>
-          <OfflineProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -32,7 +31,6 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-          </OfflineProvider>
         </RealTimeProvider>
       </AuthProvider>
     </QueryClientProvider>

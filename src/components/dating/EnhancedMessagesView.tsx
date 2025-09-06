@@ -199,8 +199,8 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
 
       // Ajouter les matches locaux si aucun match Supabase
       if (processedMatches.length === 0) {
-        const { offlineDataManager } = await import('@/lib/offlineDataManager');
-        const localMatches = await offlineDataManager.getUserMatches(user.id);
+        const { simpleDataManager } = await import('@/lib/simpleDataManager');
+        const localMatches = await simpleDataManager.getUserMatches(user.id);
         if (localMatches.length > 0) {
           console.log('📱 Affichage des matches locaux:', localMatches.length);
           // Convertir les matches locaux au bon format avec vraies données de profil
@@ -223,7 +223,7 @@ const EnhancedMessagesView: React.FC<EnhancedMessagesViewProps> = ({ onStartChat
               
               // Sinon, essayer depuis la base locale
               if (!otherProfile) {
-                otherProfile = await offlineDataManager.getProfileByUserId(otherUserId);
+                otherProfile = await simpleDataManager.getProfileByUserId(otherUserId);
               }
               
               return {
