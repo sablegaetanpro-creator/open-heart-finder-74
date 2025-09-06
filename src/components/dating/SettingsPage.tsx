@@ -25,7 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import EnhancedFilterDialog from './EnhancedFilterDialog';
-// Offline functionality removed for simplification
+import { offlineDataManager } from '@/lib/offlineDataManager';
 
 interface SettingsPageProps {
   onNavigateBack?: () => void;
@@ -520,7 +520,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigateBack }) => {
                     description: "Mise à jour des données...",
                   });
                   
-                  // Sync functionality removed for simplification
+                  await offlineDataManager.triggerSync();
                   
                   toast({
                     title: "Synchronisation réussie",

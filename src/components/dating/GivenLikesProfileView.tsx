@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { simpleDataManager } from '@/lib/simpleDataManager';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 import GivenLikesVerticalCard from './GivenLikesVerticalCard';
 
 interface Profile {
@@ -47,7 +47,7 @@ const GivenLikesProfileView: React.FC<GivenLikesProfileViewProps> = ({
       console.log('🔄 GivenLikesProfileView - Suppression du like pour:', profile.first_name, profileId);
       
       // ONLY handle the deletion - no navigation or state management
-      await simpleDataManager.removeLike(user.id, profileId);
+      await offlineDataManager.removeSwipeByUsers(user.id, profileId);
 
       console.log('✅ Like supprimé avec succès dans GivenLikesProfileView');
       

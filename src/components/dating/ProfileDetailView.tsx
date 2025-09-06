@@ -9,7 +9,7 @@ import { Heart, MapPin, Briefcase, X, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { simpleDataManager } from '@/lib/simpleDataManager';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 
 interface ProfileDetailViewProps {
   profile: {
@@ -77,7 +77,7 @@ const ProfileDetailView: React.FC<ProfileDetailViewProps> = ({
       
       // Forcer une synchronisation complète pour mettre à jour les données locales
       try {
-        // Sync functionality removed for simplification
+        await offlineDataManager.triggerSync();
         console.log('✅ Synchronisation forcée');
       } catch (error) {
         console.error('❌ Erreur synchronisation:', error);

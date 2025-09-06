@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingHero from '@/components/dating/OnboardingHero';
-import SimplifiedSwipeInterface from '@/components/dating/SimplifiedSwipeInterface';
-import SimplifiedMessagesView from '@/components/dating/SimplifiedMessagesView';
+import SingleProfileSwipeInterface from '@/components/dating/SingleProfileSwipeInterface';
+import EnhancedMessagesView from '@/components/dating/EnhancedMessagesView';
 import ProfileView from '@/components/dating/ProfileView';
-// Offline components removed for simplification
+import OfflineModeIndicator from '@/components/dating/OfflineModeIndicator';
+import { useOffline } from '@/hooks/useOffline';
 import SettingsPage from '@/components/dating/SettingsPage';
 import ProfileEditPage from '@/pages/ProfileEditPage';
 import BottomNavigation from '@/components/layout/BottomNavigation';
@@ -15,7 +16,7 @@ import BackButtonHandler from '@/components/dating/BackButtonHandler';
 
 const Index = () => {
   const { user, loading } = useAuth();
-  // Offline functionality removed for simplification
+  const { isOnline } = useOffline();
   const [isOnboarding, setIsOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState('discover');
   const [currentView, setCurrentView] = useState<'discover' | 'messages' | 'profile' | 'settings' | 'given-likes-profile'>('discover');
@@ -120,19 +121,24 @@ const Index = () => {
       case 'discover':
         return (
           <div className="flex-1">
-            <SimplifiedSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
           </div>
         );
       case 'messages':
-        return <SimplifiedMessagesView onStartChat={handleStartChat} />;
+        return <EnhancedMessagesView onStartChat={handleStartChat} />;
       case 'profile':
-        return <ProfileView />;
+        return (
+          <>
+            {!isOnline && <OfflineModeIndicator />}
+            <ProfileView />
+          </>
+        );
       case 'settings':
         return <SettingsPage onNavigateBack={() => setActiveTab('profile')} />;
       default:
         return (
           <div className="flex-1">
-            <SimplifiedSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
+            <SingleProfileSwipeInterface onAdView={() => setShowInterstitialAd(true)} />
           </div>
         );
     }

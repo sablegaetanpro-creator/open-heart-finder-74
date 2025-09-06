@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import LikesRevealDialog from './LikesRevealDialog';
-import { simpleDataManager } from '@/lib/simpleDataManager';
+import { offlineDataManager } from '@/lib/offlineDataManager';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
