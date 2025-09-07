@@ -19,34 +19,34 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean | null
-          user1_id: string
-          user2_id: string
+          user_a: string | null
+          user_b: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean | null
-          user1_id: string
-          user2_id: string
+          user_a?: string | null
+          user_b?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean | null
-          user1_id?: string
-          user2_id?: string
+          user_a?: string | null
+          user_b?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "matches_user1_id_fkey"
-            columns: ["user1_id"]
+            foreignKeyName: "matches_user_a_fkey"
+            columns: ["user_a"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "matches_user2_id_fkey"
-            columns: ["user2_id"]
+            foreignKeyName: "matches_user_b_fkey"
+            columns: ["user_b"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
